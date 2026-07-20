@@ -21,6 +21,39 @@ def only(pattern: str) -> Path:
     return matches[0]
 
 
+def is_static_archive(data: bytes) -> bool:
+    if data.startswith(b"!<arch>\n"):
+        return True
+
+    fat_formats = {
+        b"\xca\xfe\xba\xbe": (">", 20, False),
+        b"\xbe\xba\xfe\xca": ("<", 20, False),
+        b"\xca\xfe\xba\xbf": (">", 32, True),
+        b"\xbf\xba\xfe\xca": ("<", 32, True),
+    }
+    fat_format = fat_formats.get(data[:4])
+    if fat_format is None or len(data) < 8:
+        return False
+
+    endian, entry_size, is_64_bit = fat_format
+    architecture_count = struct.unpack_from(f"{endian}I", data, 4)[0]
+    if architecture_count == 0 or len(data) < 8 + architecture_count * entry_size:
+        return False
+
+    offset_format = f"{endian}{'Q' if is_64_bit else 'I'}"
+    offset_position = 8 if is_64_bit else 8
+    for index in range(architecture_count):
+        entry_start = 8 + index * entry_size
+        slice_offset = struct.unpack_from(
+            offset_format,
+            data,
+            entry_start + offset_position,
+        )[0]
+        if not data[slice_offset:].startswith(b"!<arch>\n"):
+            return False
+    return True
+
+
 def verify_android() -> None:
     aar = only("android/*.aar")
     with zipfile.ZipFile(aar) as archive:
@@ -56,7 +89,7 @@ def verify_apple() -> None:
                 / item["LibraryIdentifier"]
                 / binary_path
             )
-            if not archive.read(binary_name).startswith(b"!<arch>\n"):
+            if not is_static_archive(archive.read(binary_name)):
                 raise SystemExit(f"Not a static archive: {binary_name}")
     print(f"Verified real Apple static XCFramework: {archive_path}")
 
@@ -75,7 +108,8 @@ def verify_windows() -> None:
     print(f"Verified real Windows x86_64 DLL: {dll}")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("platform", choices=("android", "apple", "windows"))
-platform = parser.parse_args().platform
-{"android": verify_android, "apple": verify_apple, "windows": verify_windows}[platform]()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("platform", choices=("android", "apple", "windows"))
+    platform = parser.parse_args().platform
+    {"android": verify_android, "apple": verify_apple, "windows": verify_windows}[platform]()
