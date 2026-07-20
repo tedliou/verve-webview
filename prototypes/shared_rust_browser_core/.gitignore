@@ -1,0 +1,12 @@
+/bazel-*
+**/__pycache__/
+*.pyc
+/unity/package/Runtime/Web/Core/
+/unity/project/Build/
+/unity/project/Library/
+/unity/project/Logs/
+/unity/project/Temp/
+/unity/project/obj/
+/godot/project/.godot/
+/godot/project/Build/
+/godot/project/addons/verve_webview/web/

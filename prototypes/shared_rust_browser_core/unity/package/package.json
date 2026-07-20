@@ -1,0 +1,7 @@
+{
+  "name": "com.tedliou.verve.webview.prototype",
+  "version": "0.0.0",
+  "displayName": "Verve WebView Browser Core Prototype",
+  "description": "PROTOTYPE ONLY — proves independent Rust browser Core export behavior.",
+  "unity": "2021.3"
+}

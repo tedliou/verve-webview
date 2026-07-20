@@ -1,0 +1,27 @@
+load("@rules_rust//rust:defs.bzl", "rust_shared_library")
+load("@rules_rust_wasm_bindgen//:defs.bzl", "rust_wasm_bindgen")
+
+package(default_visibility = ["//visibility:public"])
+
+rust_shared_library(
+    name = "core_wasm",
+    srcs = ["core/lib.rs"],
+    crate_name = "verve_webview_core",
+    edition = "2021",
+    rustc_flags = [
+        "-Cpanic=abort",
+        "-Copt-level=s",
+    ],
+    target_compatible_with = ["@platforms//cpu:wasm32"],
+    deps = ["@rules_rust_wasm_bindgen//3rdparty:wasm_bindgen"],
+)
+
+rust_wasm_bindgen(
+    name = "core_bindgen",
+    bindgen_flags = [
+        "--no-typescript",
+    ],
+    out_name = "verve_webview_core",
+    target = "no-modules",
+    wasm_file = ":core_wasm",
+)

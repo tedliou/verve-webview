@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "com.tedliou.verve.webview.prototype": "file:../../package"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Verve.WebView.Prototype",
+  "rootNamespace": "Verve.WebView.Prototype",
+  "allowUnsafeCode": false,
+  "autoReferenced": true
+}
