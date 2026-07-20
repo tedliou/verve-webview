@@ -44,7 +44,9 @@ jobs:
       - name: Build and verify a real Android AAR
         if: runner.os == 'Linux'
         run: |
-          bazel build //native/android:verve_android
+          # android_library's default output group is jars; select its declared
+          # AAR output explicitly so this lane proves the publishable artifact.
+          bazel build //native/android:verve_android.aar
           python verify_native.py android
       - name: Build and verify a real Apple static XCFramework
         if: runner.os == 'macOS'
