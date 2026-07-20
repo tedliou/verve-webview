@@ -1,0 +1,5 @@
+[configuration]
+entry_symbol = "verve_webview_init"
+
+[libraries]
+windows.x86_64 = "res://addons/verve_webview/bin/verve_webview.windows.x86_64.dll"

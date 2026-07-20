@@ -1,0 +1,81 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_pkg//pkg:zip.bzl", "pkg_zip")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+
+pkg_files(
+    name = "android_fragment",
+    srcs = glob(["fixtures/android/**"]),
+    strip_prefix = strip_prefix.from_pkg("fixtures/android"),
+)
+
+pkg_files(
+    name = "apple_fragment",
+    srcs = glob(["fixtures/apple/**"]),
+    strip_prefix = strip_prefix.from_pkg("fixtures/apple"),
+)
+
+pkg_files(
+    name = "windows_fragment",
+    srcs = glob(["fixtures/windows/**"]),
+    strip_prefix = strip_prefix.from_pkg("fixtures/windows"),
+)
+
+pkg_files(
+    name = "web_fragment",
+    srcs = glob(["fixtures/web/**"]),
+    strip_prefix = strip_prefix.from_pkg("fixtures/web"),
+)
+
+pkg_files(
+    name = "unity_fragment",
+    srcs = glob(["fixtures/unity/**"]),
+    strip_prefix = strip_prefix.from_pkg("fixtures/unity"),
+)
+
+pkg_files(
+    name = "godot_fragment",
+    srcs = glob(["fixtures/godot/**"]),
+    strip_prefix = strip_prefix.from_pkg("fixtures/godot"),
+)
+
+pkg_zip(
+    name = "representative_android_aar",
+    srcs = [":android_fragment"],
+    package_dir = "",
+    out = "verve-webview.aar",
+)
+
+pkg_zip(
+    name = "representative_apple_xcframework",
+    srcs = [":apple_fragment"],
+    package_dir = "",
+    out = "VerveWebView.xcframework.zip",
+)
+
+pkg_tar(
+    name = "unity_package_tree",
+    srcs = [":unity_fragment"],
+    package_dir = "package",
+    extension = "tar",
+)
+
+pkg_zip(
+    name = "godot_addon_fragments",
+    srcs = [":godot_fragment"],
+    package_dir = "",
+    out = "verve-webview-godot.zip",
+)
+
+filegroup(
+    name = "representative_fragments",
+    srcs = [
+        ":representative_android_aar",
+        ":representative_apple_xcframework",
+        ":unity_package_tree",
+        ":godot_addon_fragments",
+        ":windows_fragment",
+        ":web_fragment",
+    ],
+)

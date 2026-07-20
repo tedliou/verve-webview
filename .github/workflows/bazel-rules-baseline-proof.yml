@@ -1,0 +1,47 @@
+name: Bazel rules baseline proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/prove-bazel-baseline
+    paths:
+      - prototypes/bazel_rules_baseline/**
+      - .github/workflows/bazel-rules-baseline-proof.yml
+
+permissions:
+  contents: read
+
+jobs:
+  shape-proof:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: prototypes/bazel_rules_baseline
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm pinned Bazel
+        run: bazel --version
+      - name: Resolve the complete Bzlmod graph
+        run: bazel mod graph
+      - name: Build representative distribution fragments
+        run: bazel build :representative_fragments
+      - name: Verify archive shapes and print checksums
+        run: python verify_shapes.py
+      - name: Upload proof artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-rules-baseline-${{ runner.os }}
+          path: |
+            prototypes/bazel_rules_baseline/bazel-bin/verve-webview.aar
+            prototypes/bazel_rules_baseline/bazel-bin/VerveWebView.xcframework.zip
+            prototypes/bazel_rules_baseline/bazel-bin/unity_package_tree.tar
+            prototypes/bazel_rules_baseline/bazel-bin/verve-webview-godot.zip

@@ -1,0 +1,16 @@
+module(
+    name = "verve_webview_bazel_rules_baseline",
+    version = "0.0.0",
+)
+
+# Bazel 8 is the latest common release line explicitly covered by all of these
+# rulesets. Keep direct dependencies here so the lockfile records the complete
+# architecture-facing baseline instead of relying on transitive selection.
+bazel_dep(name = "rules_android", version = "0.7.3")
+bazel_dep(name = "rules_apple", version = "4.5.3")
+bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "rules_dotnet", version = "0.21.5")
+bazel_dep(name = "rules_kotlin", version = "2.4.0")
+bazel_dep(name = "rules_pkg", version = "1.2.0")
+bazel_dep(name = "rules_rust", version = "0.71.3")
+bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.71.0")
