@@ -18,9 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
+          - ubuntu-24.04
+          - macos-15
+          - windows-2022
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -36,6 +36,26 @@ jobs:
         run: bazel build :representative_fragments
       - name: Verify archive shapes and print checksums
         run: python verify_shapes.py
+      - name: Pin Xcode 16.4
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+      - name: Build and verify a real Android AAR
+        if: runner.os == 'Linux'
+        run: |
+          bazel build //native/android:verve_android
+          python verify_native.py android
+      - name: Build and verify a real Apple static XCFramework
+        if: runner.os == 'macOS'
+        run: |
+          bazel build //native/apple:VerveWebView
+          python verify_native.py apple
+      - name: Build and verify a real Windows x86_64 DLL
+        if: runner.os == 'Windows'
+        run: |
+          bazel build //native/windows:verve_webview_windows
+          python verify_native.py windows
       - name: Upload proof artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -45,3 +65,4 @@ jobs:
             prototypes/bazel_rules_baseline/bazel-bin/VerveWebView.xcframework.zip
             prototypes/bazel_rules_baseline/bazel-bin/unity_package_tree.tar
             prototypes/bazel_rules_baseline/bazel-bin/verve-webview-godot.zip
+            prototypes/bazel_rules_baseline/bazel-bin/native/**

@@ -1,0 +1,7 @@
+cc_binary(
+    name = "verve_webview_windows",
+    srcs = ["verve_webview.cc"],
+    linkshared = True,
+    visibility = ["//visibility:public"],
+    win_def_file = "verve_webview.def",
+)

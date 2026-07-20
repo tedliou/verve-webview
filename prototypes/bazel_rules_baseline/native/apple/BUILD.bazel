@@ -1,0 +1,19 @@
+load("@rules_apple//apple:apple.bzl", "apple_static_xcframework")
+
+objc_library(
+    name = "verve_ios_library",
+    srcs = ["verve_webview.m"],
+    hdrs = ["verve_webview.h"],
+)
+
+apple_static_xcframework(
+    name = "VerveWebView",
+    deps = [":verve_ios_library"],
+    ios = {
+        "device": ["arm64"],
+        "simulator": ["arm64", "x86_64"],
+    },
+    minimum_os_versions = {"ios": "13.0"},
+    public_hdrs = ["verve_webview.h"],
+    visibility = ["//visibility:public"],
+)

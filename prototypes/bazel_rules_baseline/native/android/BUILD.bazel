@@ -1,0 +1,10 @@
+load("@rules_android//rules:rules.bzl", "android_library")
+
+android_library(
+    name = "verve_android",
+    srcs = ["VerveWebView.java"],
+    custom_package = "com.tedliou.verve.webview",
+    manifest = "AndroidManifest.xml",
+    javacopts = ["--release", "11"],
+    visibility = ["//visibility:public"],
+)

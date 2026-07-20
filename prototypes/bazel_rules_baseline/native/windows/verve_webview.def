@@ -1,0 +1,3 @@
+LIBRARY verve_webview_windows
+EXPORTS
+    verve_webview_abi_version
