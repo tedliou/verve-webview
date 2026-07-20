@@ -47,7 +47,15 @@ def verify_apple() -> None:
         if len(simulator) != 1 or set(simulator[0]["SupportedArchitectures"]) != {"arm64", "x86_64"}:
             raise SystemExit(f"Unexpected simulator slice: {simulator}")
         for item in libraries:
-            binary_name = f"{archive_path.stem}/{item['LibraryIdentifier']}/{item['LibraryPath']}"
+            library_path = Path(item["LibraryPath"])
+            binary_path = library_path
+            if library_path.suffix == ".framework":
+                binary_path /= library_path.stem
+            binary_name = str(
+                Path(archive_path.stem)
+                / item["LibraryIdentifier"]
+                / binary_path
+            )
             if not archive.read(binary_name).startswith(b"!<arch>\n"):
                 raise SystemExit(f"Not a static archive: {binary_name}")
     print(f"Verified real Apple static XCFramework: {archive_path}")
