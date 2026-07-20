@@ -33,7 +33,7 @@ bazel build :representative_fragments
 python verify_shapes.py
 ```
 
-本機以 Bazel 8.7.0 重建兩次，四個 archive 的 SHA-256 相同。`rules_pkg` 的 zip helper 需要 C++ toolchain；因此 packaging lane 必須提供明示且固定的 compiler image，不能把未追蹤的 host autodetection 稱為 hermetic。
+本機以 Bazel 8.7.0 重建兩次，四個 archive 的 SHA-256 相同。跨 OS proof 另以 `.gitattributes` 固定文字換行與 binary checkout，避免 Windows CRLF 轉換污染 archive identity。`rules_pkg` 的 zip helper 需要 C++ toolchain；因此 packaging lane 必須提供明示且固定的 compiler image，不能把未追蹤的 host autodetection 稱為 hermetic。
 
 ## Artifact-equivalence constraints
 

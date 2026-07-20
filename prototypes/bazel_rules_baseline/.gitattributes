@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# Representative binary payloads must be checked out byte-for-byte. Real
+# platform outputs will replace these shape fixtures without text conversion.
+fixtures/**/*.a binary
+fixtures/**/*.aar binary
+fixtures/**/*.dll binary
+fixtures/**/*.jar binary
+fixtures/**/*.wasm binary

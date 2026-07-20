@@ -27,7 +27,7 @@ jobs:
         shell: bash
         working-directory: prototypes/bazel_rules_baseline
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Confirm pinned Bazel
         run: bazel --version
       - name: Resolve the complete Bzlmod graph
@@ -37,7 +37,7 @@ jobs:
       - name: Verify archive shapes and print checksums
         run: python verify_shapes.py
       - name: Upload proof artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bazel-rules-baseline-${{ runner.os }}
           path: |
