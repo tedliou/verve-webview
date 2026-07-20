@@ -33,7 +33,9 @@ bazel build :representative_fragments
 python verify_shapes.py
 ```
 
-本機以 Bazel 8.7.0 重建兩次，四個 archive 的 SHA-256 相同。跨 OS proof 另以 `.gitattributes` 固定文字換行與 binary checkout，避免 Windows CRLF 轉換污染 archive identity。`rules_pkg` 的 zip helper 需要 C++ toolchain；因此 packaging lane 必須提供明示且固定的 compiler image，不能把未追蹤的 host autodetection 稱為 hermetic。
+本機以 Bazel 8.7.0 重建兩次，四個 archive 的 SHA-256 相同。跨 OS proof 另以 `.gitattributes` 固定文字換行與 binary checkout，避免 Windows CRLF 轉換污染輸入。`rules_pkg` 的 zip helper 需要 C++ toolchain；因此 packaging lane 必須提供明示且固定的 compiler image，不能把未追蹤的 host autodetection 稱為 hermetic。
+
+Ubuntu、macOS 與 Windows 產出的 archive 內容清單與 uncompressed bytes 相同；Unity tar 也達成三個 OS byte-identical。ZIP 的 Windows bytes 仍不同，差異限定在 central-directory 的 `version made by` host field（Windows 為 FAT/0，Unix 為 Unix/3）。所以 release policy 必須讓 Android AAR、XCFramework zip 與 Godot zip 只在單一受控 Linux aggregation lane 形成 canonical bytes；其他 OS 只產出帶 checksum manifest 的 payload fragments，不能各自重建最終 ZIP 後視為同一 release artifact。
 
 ## Artifact-equivalence constraints
 

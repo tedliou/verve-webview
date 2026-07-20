@@ -30,6 +30,17 @@ def tar_members(name: str) -> set[str]:
         return set(archive.getnames())
 
 
+def zip_content_digest(name: str) -> str:
+    """Hash names and uncompressed bytes, intentionally excluding ZIP metadata."""
+    digest = hashlib.sha256()
+    with zipfile.ZipFile(OUTPUT / name) as archive:
+        for member in sorted(info.filename for info in archive.infolist() if not info.is_dir()):
+            digest.update(member.encode())
+            digest.update(b"\0")
+            digest.update(hashlib.sha256(archive.read(member)).digest())
+    return digest.hexdigest()
+
+
 aar = zip_members("verve-webview.aar")
 require_members(aar, {"AndroidManifest.xml", "classes.jar"}, "Android AAR")
 with zipfile.ZipFile(OUTPUT / "verve-webview.aar") as archive:
@@ -90,6 +101,8 @@ for artifact in (
     "verve-webview-godot.zip",
 ):
     digest = hashlib.sha256((OUTPUT / artifact).read_bytes()).hexdigest()
-    print(f"{digest}  {artifact}")
+    print(f"bytes={digest}  {artifact}")
+    if artifact.endswith((".aar", ".zip")):
+        print(f"contents={zip_content_digest(artifact)}  {artifact}")
 
 print("Representative artifact shapes verified.")
