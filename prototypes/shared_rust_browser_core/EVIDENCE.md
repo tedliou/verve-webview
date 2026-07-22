@@ -3,7 +3,7 @@
 Tracking ticket: [#15](https://github.com/tedliou/verve-webview/issues/15)
 
 This is evidence for an architecture decision, not production test coverage.
-The ticket remains open because the required Unity 2021.3 run has not happened.
+Both pinned engine gates passed.
 
 ## Bundle identity
 
@@ -35,11 +35,33 @@ Removing the exported Wasm produced `core_load_failed` with an HTTP status
 failure. Replacing it with JavaScript bytes produced `core_load_failed` with a
 WebAssembly magic-word `CompileError`. Neither case hung.
 
-## Unity 6: compatibility precheck passed, not the required gate
+## Unity 2021.3.45f2: required gate passed
+
+Environment: Unity Personal `2021.3.45f2 (88f88f591b2e)` installed with WebGL
+Build Support; release WebGL; High managed stripping; IL2CPP/Emscripten; package
+imported through UPM. The build was launched through Unity CLI:
+
+```text
+unity.exe --non-interactive run <project> --editor-version 2021.3.45f2 -- -nographics -executeMethod BuildPrototype.Build -logFile -
+```
+
+The real browser export returned:
+
+```json
+{"engine":"unity","init":"{\"ok\":true,\"code\":\"ready\",\"detail\":null}","create":"{\"ok\":true,\"code\":\"created\",\"handle\":1}","open":"{\"ok\":true,\"code\":\"accepted\",\"handle\":1,\"generation\":1}","dispose":"{\"ok\":true,\"code\":\"disposed\",\"handle\":1,\"generation\":2}","disposedRequest":"{\"ok\":false,\"code\":\"disposed_instance\",\"handle\":1,\"generation\":3}","lateCompletionEvents":0,"trap":"{\"ok\":false,\"code\":\"core_trapped\",\"detail\":\"RuntimeError: unreachable\"}"}
+```
+
+Removing the exported Wasm produced `core_load_failed` with an HTTP status
+failure. Replacing it with JavaScript bytes produced `core_load_failed` with a
+WebAssembly magic-word `CompileError`. Neither case hung. The successful AOT
+callbacks after High managed stripping also prove that the rooted
+`MonoPInvokeCallback` delegates survived release stripping.
+
+## Unity 6: compatibility precheck passed
 
 Environment: Unity `6000.3.20f1`, release WebGL, High managed stripping,
-IL2CPP/Emscripten, package imported through UPM. This only reduces risk; ticket
-#15 explicitly requires Unity 2021.3.
+IL2CPP/Emscripten, package imported through UPM. This precheck preceded the
+required Unity 2021.3.45f2 gate above.
 
 The real browser export returned:
 
@@ -51,10 +73,11 @@ Removing the exported Wasm produced `core_load_failed` with an HTTP status
 failure. Replacing it with JavaScript bytes produced `core_load_failed` with a
 WebAssembly magic-word `CompileError`. Neither case hung.
 
-## Remaining decision gate
+## Decision
 
-Repeat the Unity run with `2021.3.48f1` plus its WebGL Build Support module. If
-the UPM import, `.jslib` preprocessing, High-stripping IL2CPP export, browser
-result, error injections, and post-export hashes all pass, the independent
-browser Core route is viable. Any incompatibility specific to Unity 2021.3 is
-the trigger to evaluate the ticket's Unity-owned Emscripten fallback.
+The byte-identical independent `wasm32-unknown-unknown` browser Core bundle is
+viable as the v1 distribution contract. Unity can deliver it from UPM through a
+package-owned post-build hook, while Godot can deliver it through an addon-owned
+export plugin. Consumers need no manual copy, custom HTML template, Extension
+Support, threads, or cross-origin isolation. The Unity-owned
+`wasm32-unknown-emscripten` fallback is not required for v1.

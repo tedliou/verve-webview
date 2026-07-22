@@ -7,10 +7,6 @@ using Verve.WebView.Prototype;
 
 public sealed class PrototypeRunner : MonoBehaviour
 {
-    [Serializable]
-    private sealed class CreateResult { public bool ok; public uint handle; }
-
-    [Serializable]
     private sealed class ProofResult
     {
         public string engine = "unity";
@@ -37,14 +33,13 @@ public sealed class PrototypeRunner : MonoBehaviour
     {
         proof.init = value;
         proof.create = VerveWebViewWeb.CreateInstance();
-        var created = JsonUtility.FromJson<CreateResult>(proof.create);
-        if (created == null || !created.ok) {
+        if (!TryReadHandle(proof.create, out var handle)) {
             Publish();
             return;
         }
-        proof.open = VerveWebViewWeb.Request("open", created.handle, "{\"url\":\"https://example.invalid\"}");
-        proof.dispose = VerveWebViewWeb.Request("dispose", created.handle);
-        proof.disposedRequest = VerveWebViewWeb.Request("open", created.handle);
+        proof.open = VerveWebViewWeb.Request("open", handle, "{\"url\":\"https://example.invalid\"}");
+        proof.dispose = VerveWebViewWeb.Request("dispose", handle);
+        proof.disposedRequest = VerveWebViewWeb.Request("open", handle);
         StartCoroutine(FinishAfterMicrotasks());
     }
 
@@ -59,8 +54,39 @@ public sealed class PrototypeRunner : MonoBehaviour
 
     private void Publish()
     {
-        var json = JsonUtility.ToJson(proof);
+        var json = "{\"engine\":\"unity\""
+            + ",\"init\":" + Quote(proof.init)
+            + ",\"create\":" + Quote(proof.create)
+            + ",\"open\":" + Quote(proof.open)
+            + ",\"dispose\":" + Quote(proof.dispose)
+            + ",\"disposedRequest\":" + Quote(proof.disposedRequest)
+            + ",\"lateCompletionEvents\":" + proof.lateCompletionEvents
+            + ",\"trap\":" + Quote(proof.trap)
+            + "}";
         Debug.Log("VERVE_PROTOTYPE_RESULT " + json);
         VerveWebViewWeb.PublishPrototypeResult(json);
+    }
+
+    private static bool TryReadHandle(string json, out uint handle)
+    {
+        handle = 0;
+        if (string.IsNullOrEmpty(json) || !json.Contains("\"ok\":true")) return false;
+        const string marker = "\"handle\":";
+        var start = json.IndexOf(marker, StringComparison.Ordinal);
+        if (start < 0) return false;
+        start += marker.Length;
+        var end = start;
+        while (end < json.Length && char.IsDigit(json[end])) end++;
+        return uint.TryParse(json.Substring(start, end - start), out handle);
+    }
+
+    private static string Quote(string value)
+    {
+        if (value == null) return "null";
+        return "\"" + value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\r", "\\r")
+            .Replace("\n", "\\n") + "\"";
     }
 }

@@ -13,6 +13,17 @@ wasm-bindgen `no-modules` JavaScript facade, without consumer copying, a
 consumer-owned HTML template, Extension Support, threads, or cross-origin
 isolation?
 
+The pinned Unity gate is `2021.3.45f2`, the Unity 2021 LTS editor available to
+the project's free-account plan.
+
+## Result
+
+Yes. The pinned Unity 2021.3.45f2 and Godot 4.7.1 browser gates passed,
+including release export, runtime behavior, injected failures, callback
+retention, High-stripping AOT behavior, and post-export bundle identity. The v1
+architecture can use the independent browser Core; no Unity-owned Emscripten
+fallback is needed. See [`EVIDENCE.md`](EVIDENCE.md).
+
 The prototype deliberately uses package-owned post-export hooks. Both hooks copy
 the same Bazel-produced bundle beside the engine export and inject two script
 tags into the generated `index.html`. The engine transports then exercise
@@ -26,7 +37,7 @@ From this directory:
 ```sh
 python3 prototype.py \
   --bazel /path/to/bazel-or-bazelisk \
-  --unity "/path/to/Unity-2021.3/Editor/Unity" \
+  --unity-cli "/path/to/unity.exe" \
   --godot "/path/to/Godot-4.7.1"
 ```
 
@@ -34,12 +45,14 @@ The command builds the real Rust/Wasm bundle, stages it into both distributions,
 runs release exports, checks injection, and compares SHA-256 values. Missing
 engines are reported as `NOT RUN`; that outcome is not evidence of viability.
 
-When invoking a Windows `Unity.exe` from WSL, also pass a **new** directory on a
+When invoking the Windows Unity CLI from WSL, also pass a **new** directory on a
 Windows-mounted drive, for example
 `--unity-workspace /mnt/c/Users/me/AppData/Local/Temp/verve-unity-proof`.
 The runner copies the throwaway Unity package and project there because Unity
 rejects case-sensitive WSL project directories. It refuses to overwrite an
-existing directory.
+existing directory. The runner invokes the pinned editor exclusively through
+`unity.exe run --editor-version 2021.3.45f2`; it never calls the Editor binary
+directly.
 
 The browser observation can be automated with the dependency-free
 `browser/cdp_probe.py` helper after serving an export over HTTP. See

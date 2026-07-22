@@ -75,9 +75,9 @@ def engine_path(path: Path, executable: str) -> str:
     return str(path)
 
 
-def build_unity(executable: str, workspace: Path | None) -> Path:
+def build_unity(cli: str, workspace: Path | None) -> Path:
     unity_root = ROOT / "unity"
-    if executable.lower().endswith(".exe"):
+    if cli.lower().endswith(".exe"):
         if workspace is None:
             raise SystemExit(
                 "Windows Unity cannot build this case-sensitive WSL worktree. "
@@ -89,12 +89,14 @@ def build_unity(executable: str, workspace: Path | None) -> Path:
         unity_root = workspace
     project = unity_root / "project"
     run([
-        executable,
-        "-batchmode",
+        cli,
+        "--non-interactive",
+        "run",
+        engine_path(project, cli),
+        "--editor-version",
+        "2021.3.45f2",
+        "--",
         "-nographics",
-        "-quit",
-        "-projectPath",
-        engine_path(project, executable),
         "-executeMethod",
         "BuildPrototype.Build",
         "-logFile",
@@ -140,11 +142,11 @@ def verify_export(engine: str, output: Path, expected: dict[str, str]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bazel", default=os.environ.get("VERVE_PROTOTYPE_BAZEL", "bazel"))
-    parser.add_argument("--unity", help="Pinned Unity 2021.3 Editor executable")
+    parser.add_argument("--unity-cli", help="Unity CLI executable (unity.exe)")
     parser.add_argument(
         "--unity-workspace",
         type=Path,
-        help="New directory on a Windows-mounted drive when --unity is a Windows .exe",
+        help="New directory on a Windows-mounted drive when --unity-cli is a Windows .exe",
     )
     parser.add_argument("--godot", help="Pinned Godot 4.7.1 executable")
     parser.add_argument("--skip-core-build", action="store_true")
@@ -166,12 +168,12 @@ def main() -> int:
         print(f"  {digest}  {name}")
 
     built = 0
-    if args.unity:
-        unity_output = build_unity(args.unity, args.unity_workspace)
+    if args.unity_cli:
+        unity_output = build_unity(args.unity_cli, args.unity_workspace)
         verify_export("Unity", unity_output, expected)
         built += 1
     else:
-        print("Unity 2021.3 export: NOT RUN (pass --unity)")
+        print("Unity 2021.3 export: NOT RUN (pass --unity-cli)")
     if args.godot:
         build_godot(args.godot)
         verify_export("Godot", ROOT / "godot" / "project" / "Build" / "Web", expected)
