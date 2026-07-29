@@ -1,1 +1,24 @@
-{"platform":"ios","schema_version":1}
+{
+  "minimum_ios_version": "13.0",
+  "payloads": [
+    {
+      "architectures": [
+        "arm64"
+      ],
+      "profile": "release",
+      "variant": "device"
+    },
+    {
+      "architectures": [
+        "arm64",
+        "x86_64"
+      ],
+      "profile": "verification",
+      "variant": "simulator"
+    }
+  ],
+  "platform": "ios",
+  "rules_apple_version": "4.5.3",
+  "schema_version": 1,
+  "xcode_version": "16.4"
+}
