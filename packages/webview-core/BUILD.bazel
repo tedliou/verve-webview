@@ -141,7 +141,7 @@ filegroup(
 
 web_core_consumer_identity(
     name = "browser_consumer_identity",
-    expected_payload_count = 4,
+    expected_payload_count = 5,
     godot = "//packages/webview-godot:binding_web",
     unity = "//packages/webview-unity:binding_web",
 )

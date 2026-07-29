@@ -1,8 +1,45 @@
-load("//packages/webview-web:build/web_backend.bzl", "web_backend")
+load(
+    "//packages/webview-web:build/web_backend.bzl",
+    "web_backend",
+    "web_core_test_payload",
+)
+
+filegroup(
+    name = "runtime",
+    srcs = ["src/verve_webview_web_backend.js"],
+)
 
 web_backend(
     name = "backend",
     core = "//packages/webview-core:core_web",
+    runtime = ":runtime",
     runtime_metadata = "src/runtime-metadata.json",
     visibility = ["//build/visibility:backend_consumers"],
+)
+
+web_core_test_payload(
+    name = "_browser_test_core",
+    core = "//packages/webview-core:core_web",
+)
+
+sh_test(
+    name = "browser_backend_test",
+    srcs = ["tests/browser_backend_test.sh"],
+    args = [
+        "$(location tests/browser_backend_harness.py)",
+        "$(locations :_browser_test_core)",
+        "$(location src/verve_webview_web_backend.js)",
+        "$(location tests/browser_backend_harness.html)",
+        "$(location tests/browser_backend_harness.js)",
+        "$(location tests/surface_content.html)",
+    ],
+    data = [
+        "src/verve_webview_web_backend.js",
+        "tests/browser_backend_harness.html",
+        "tests/browser_backend_harness.js",
+        "tests/browser_backend_harness.py",
+        "tests/surface_content.html",
+        ":_browser_test_core",
+    ],
+    tags = ["no-sandbox"],
 )

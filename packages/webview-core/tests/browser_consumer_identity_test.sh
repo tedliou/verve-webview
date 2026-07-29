@@ -15,8 +15,8 @@ for file in "$@"; do
 done
 
 test -n "${manifest}"
-test "$(wc -l < "${manifest}")" -eq 4
-test "${#payloads[@]}" -eq 4
+test "$(wc -l < "${manifest}")" -eq 5
+test "${#payloads[@]}" -eq 5
 
 for payload in "${payloads[@]}"; do
   sha256sum "${payload}"

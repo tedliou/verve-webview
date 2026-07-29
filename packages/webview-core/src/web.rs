@@ -173,6 +173,16 @@ pub fn browser_dispose(public_instance: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn browser_report_host_lost(public_instance: u32) {
+    TRANSPORT.with(|transport| {
+        let transport = transport.borrow();
+        transport
+            .core
+            .report_host_lost(transport.instance(public_instance));
+    });
+}
+
+#[wasm_bindgen]
 pub fn browser_complete(
     public_instance: u32,
     public_operation: u32,

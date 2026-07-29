@@ -192,5 +192,13 @@
         return bindings().browser_dispose(instance);
       });
     },
+    reportHostLost: function (instance) {
+      if (phase !== "ready") return;
+      try {
+        bindings().browser_report_host_lost(instance);
+      } catch (error) {
+        phase = "failed";
+      }
+    },
   });
 })(window);

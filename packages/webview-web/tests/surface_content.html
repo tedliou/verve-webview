@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <body>
+    <form><input name="value"></form>
+    <script>
+      (function () {
+        document.body.dataset.scripts = "enabled";
+        window.parent.postMessage({
+          type: "verve-security-report",
+          scriptsEnabled: true,
+        }, "*");
+      })();
+    </script>
+  </body>
+</html>

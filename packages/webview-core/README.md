@@ -42,6 +42,9 @@ publishes the resulting JavaScript and Wasm together with the stable
 The facade uses opaque `u32` handles, copied bounded payloads, one asynchronous
 Platform Backend sink, Promises, and retained per-instance event callbacks.
 `dispose` retires active work and late Backend completion emits no event.
+The Backend reports permanent DOM host loss through the facade's
+`reportHostLost` method, which applies the shared Core host-loss transition
+without creating a page-navigation callback.
 Missing or corrupt Wasm returns `core_load_failed`; Rust uses `panic=abort`.
 
 Both Web Binding Targets receive the exact same four Core payload Files through

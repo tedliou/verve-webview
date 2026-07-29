@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      html, body { margin: 0; }
+      #game-host {
+        position: absolute;
+        left: 40px;
+        top: 30px;
+        width: 400px;
+        height: 240px;
+      }
+    </style>
+    <script src="verve_webview_core.js"></script>
+    <script src="verve_webview_core_facade.js"></script>
+    <script src="verve_webview_web_backend.js"></script>
+  </head>
+  <body>
+    <div id="game-host"></div>
+    <pre id="result">{"status":"running"}</pre>
+    <script src="browser_backend_harness.js"></script>
+  </body>
+</html>

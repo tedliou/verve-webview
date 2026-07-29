@@ -59,12 +59,11 @@ def _platform_backend_impl(ctx):
         fail("payloads and payload_keys must have identical lengths")
     if len(ctx.attr.payload_keys) != len({key: True for key in ctx.attr.payload_keys}):
         fail("Platform Backend payload keys must be unique")
-    payloads = {
-        key: target[DefaultInfo].files
-        for key, target in zip(ctx.attr.payload_keys, ctx.attr.payloads)
-    }
-    if not payloads and core.transport == "web":
-        payloads = core.payloads
+    payloads = dict(core.payloads) if core.transport == "web" else {}
+    for key, target in zip(ctx.attr.payload_keys, ctx.attr.payloads):
+        if key in payloads:
+            fail("Platform Backend payload key collides with Core payload: %s" % key)
+        payloads[key] = target[DefaultInfo].files
     payload_files = depset(transitive = payloads.values())
     return [
         DefaultInfo(files = depset(
