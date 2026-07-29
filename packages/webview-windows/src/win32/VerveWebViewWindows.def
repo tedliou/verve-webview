@@ -1,0 +1,5 @@
+LIBRARY verve_webview_windows
+EXPORTS
+    verve_webview_windows_create
+    verve_webview_windows_destroy
+    verve_webview_windows_submit

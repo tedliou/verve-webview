@@ -1,0 +1,18 @@
+load("@rules_cc//cc:defs.bzl", "cc_import", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_import(
+    name = "loader_x64",
+    static_library = "build/native/x64/WebView2LoaderStatic.lib",
+)
+
+cc_library(
+    name = "sdk_x64",
+    hdrs = [
+        "build/native/include/WebView2.h",
+        "build/native/include/WebView2EnvironmentOptions.h",
+    ],
+    includes = ["build/native/include"],
+    deps = [":loader_x64"],
+)
