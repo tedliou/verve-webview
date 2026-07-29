@@ -1,0 +1,8 @@
+load("//packages/webview-web:build/web_backend.bzl", "web_backend")
+
+web_backend(
+    name = "backend",
+    core = "//packages/webview-core:core_web",
+    runtime_metadata = "src/runtime-metadata.json",
+    visibility = ["//build/visibility:backend_consumers"],
+)

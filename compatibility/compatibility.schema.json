@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tedliou.github.io/verve-webview/schemas/compatibility-v1.json",
+  "title": "Verve WebView SDK compatibility metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sdk_version", "supported", "verified"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "sdk_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:exp|pre)\\.[0-9]+)?$"
+    },
+    "supported": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["engine", "engine_line", "minimum_patch", "maximum_patch", "platforms"],
+        "properties": {
+          "engine": {"enum": ["unity", "godot"]},
+          "engine_line": {"type": "string"},
+          "minimum_patch": {"type": "string"},
+          "maximum_patch": {"type": "string"},
+          "platforms": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"enum": ["android", "ios", "windows", "web"]}
+          }
+        }
+      }
+    },
+    "verified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["engine", "engine_version", "platform", "architecture", "toolchain", "runtime"],
+        "properties": {
+          "engine": {"enum": ["unity", "godot"]},
+          "engine_version": {"type": "string"},
+          "platform": {"enum": ["android", "ios", "windows", "web"]},
+          "architecture": {"type": "string"},
+          "toolchain": {"type": "object"},
+          "runtime": {"type": "object"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "registry_version": 1,
+  "ids": [
+    {"id": 0, "name": "ok", "status": "active"},
+    {"id": 100, "name": "invalid_options", "status": "active"},
+    {"id": 101, "name": "invalid_url", "status": "active"},
+    {"id": 102, "name": "invalid_geometry", "status": "active"},
+    {"id": 200, "name": "not_initialized", "status": "active"},
+    {"id": 201, "name": "already_initialized", "status": "active"},
+    {"id": 202, "name": "operation_in_progress", "status": "active"},
+    {"id": 203, "name": "disposed", "status": "active"},
+    {"id": 204, "name": "surface_not_open", "status": "active"},
+    {"id": 205, "name": "surface_in_use", "status": "active"},
+    {"id": 300, "name": "host_unavailable", "status": "active"},
+    {"id": 301, "name": "host_lost", "status": "active"},
+    {"id": 302, "name": "backend_failure", "status": "active"},
+    {"id": 303, "name": "cleanup_failed", "status": "active"},
+    {"id": 400, "name": "core_load_failed", "status": "active"},
+    {"id": 401, "name": "abi_mismatch", "status": "active"},
+    {"id": 402, "name": "runtime_unavailable", "status": "active"},
+    {"id": 403, "name": "unsupported_environment", "status": "active"},
+    {"id": 404, "name": "distribution_invalid", "status": "active"},
+    {"id": 500, "name": "internal_failure", "status": "active"}
+  ]
+}

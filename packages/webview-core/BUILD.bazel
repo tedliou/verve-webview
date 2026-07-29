@@ -1,0 +1,61 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("//packages/webview-core:build/api_contract.bzl", "api_contract")
+load("//packages/webview-core:build/core.bzl", "webview_core_native", "webview_core_web")
+
+rust_binary(
+    name = "update_api_contract",
+    srcs = ["tools/api_contract_generator.rs"],
+    edition = "2021",
+    visibility = ["//visibility:private"],
+)
+
+api_contract(
+    name = "api_contract",
+    src = "api-contract.yaml",
+    id_registry = "error-id-registry.json",
+    generator = ":update_api_contract",
+    snapshots = {
+        "rust": ["generated/rust/api_contract.rs"],
+        "native": ["generated/native/webview_api_contract.h"],
+        "web": ["generated/web/api-contract.js"],
+        "unity": ["generated/unity/WebViewContract.g.cs"],
+        "godot": ["generated/godot/webview_contract.gd"],
+        "docs": ["generated/docs/api-contract.md"],
+        "conformance": ["generated/conformance/api-contract.json"],
+    },
+    visibility = ["//build/visibility:core_consumers"],
+)
+
+webview_core_native(
+    name = "core_native",
+    api_contract = ":api_contract",
+    visibility = ["//build/visibility:core_consumers"],
+)
+
+webview_core_web(
+    name = "core_web",
+    api_contract = ":api_contract",
+    visibility = ["//build/visibility:core_consumers"],
+)
+
+sh_test(
+    name = "contract_check",
+    srcs = ["tests/contract_check.sh"],
+    data = [":api_contract"],
+)
+
+sh_test(
+    name = "contract_rejection_test",
+    srcs = ["tests/contract_rejection_test.sh"],
+    data = [
+        "api-contract.yaml",
+        "error-id-registry.json",
+        ":update_api_contract",
+    ] + glob(["generated/**"]),
+)
+
+sh_test(
+    name = "contract_snapshot_shape_test",
+    srcs = ["tests/contract_snapshot_shape_test.sh"],
+    data = glob(["generated/**"], allow_empty = True),
+)

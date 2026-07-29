@@ -1,0 +1,12 @@
+load("//build:release_version.bzl", "release_version")
+
+exports_files([
+    "module_rules.bzl",
+    "providers.bzl",
+])
+
+release_version(
+    name = "release_version",
+    build_setting_default = "UNSET",
+    visibility = ["//visibility:public"],
+)

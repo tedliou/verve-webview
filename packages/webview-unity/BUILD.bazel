@@ -1,0 +1,58 @@
+load("//build:module_rules.bzl", "engine_sdk_distribution")
+load("//packages/webview-unity:build/unity_adapter.bzl", "unity_adapter", "unity_binding")
+
+unity_adapter(
+    name = "adapter",
+    api_contract = "//packages/webview-core:api_contract",
+    compatibility = "//compatibility:compatibility.json",
+    visibility = ["//visibility:private"],
+)
+
+unity_binding(
+    name = "binding_android",
+    adapter = ":adapter",
+    backend = "//packages/webview-android:backend",
+    compatibility = "//compatibility:compatibility.json",
+    platform = "android",
+    visibility = ["//visibility:private"],
+)
+
+unity_binding(
+    name = "binding_ios",
+    adapter = ":adapter",
+    backend = "//packages/webview-ios:backend",
+    compatibility = "//compatibility:compatibility.json",
+    platform = "ios",
+    visibility = ["//visibility:private"],
+)
+
+unity_binding(
+    name = "binding_windows",
+    adapter = ":adapter",
+    backend = "//packages/webview-windows:backend",
+    compatibility = "//compatibility:compatibility.json",
+    platform = "windows",
+    visibility = ["//visibility:private"],
+)
+
+unity_binding(
+    name = "binding_web",
+    adapter = ":adapter",
+    backend = "//packages/webview-web:backend",
+    compatibility = "//compatibility:compatibility.json",
+    platform = "web",
+    visibility = ["//visibility:private"],
+)
+
+engine_sdk_distribution(
+    name = "sdk",
+    engine = "unity",
+    adapter = ":adapter",
+    android = ":binding_android",
+    ios = ":binding_ios",
+    windows = ":binding_windows",
+    web = ":binding_web",
+    release_version = "//build:release_version",
+    target_compatible_with = ["//build/platforms:canonical_aggregation_capability"],
+    visibility = ["//visibility:public"],
+)
