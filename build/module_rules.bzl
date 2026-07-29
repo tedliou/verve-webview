@@ -55,11 +55,16 @@ def _platform_backend_impl(ctx):
             ctx.attr.platform,
             ctx.attr.required_transport,
         ))
+    payloads = core.payloads if core.transport == "web" else {}
+    payload_files = depset(transitive = payloads.values())
     return [
-        DefaultInfo(files = depset([ctx.file.runtime_metadata])),
+        DefaultInfo(files = depset(
+            direct = [ctx.file.runtime_metadata],
+            transitive = [payload_files],
+        )),
         PlatformBackendInfo(
             platform = ctx.attr.platform,
-            payloads = {},
+            payloads = payloads,
             runtime_metadata = ctx.file.runtime_metadata,
         ),
     ]
@@ -85,6 +90,7 @@ platform_backend = rule(
 
 def _fragment_impl(ctx):
     platform = ctx.attr.platform
+    entry_sets = []
     if ctx.attr.api_contract:
         ctx.attr.api_contract[ApiContractInfo]
     if ctx.attr.adapter:
@@ -93,6 +99,7 @@ def _fragment_impl(ctx):
         backend = ctx.attr.backend[PlatformBackendInfo]
         if backend.platform != platform:
             fail("%s binding cannot consume the %s backend" % (platform, backend.platform))
+        entry_sets.extend(backend.payloads.values())
 
     version = ctx.attr._release_version[ReleaseVersionInfo].value
     content_manifest = ctx.actions.declare_file(ctx.label.name + ".content-manifest.json")
@@ -109,10 +116,14 @@ def _fragment_impl(ctx):
             + "\"schema_version\":1}\n"
         ) % (ctx.label.name, platform, version),
     )
+    entries = depset(transitive = entry_sets)
     return [
-        DefaultInfo(files = depset([content_manifest, fragment_manifest])),
+        DefaultInfo(files = depset(
+            direct = [content_manifest, fragment_manifest],
+            transitive = [entries],
+        )),
         DistributionFragmentInfo(
-            entries = depset(),
+            entries = entries,
             compatibility = ctx.file.compatibility,
             content_manifest = content_manifest,
             fragment_manifest = fragment_manifest,
@@ -133,6 +144,67 @@ distribution_fragment = rule(
         "_release_version": attr.label(
             default = "//build:release_version",
             providers = [ReleaseVersionInfo],
+        ),
+    },
+)
+
+def _web_identity_transition_impl(_settings, _attr):
+    return {"//command_line_option:platforms": "//build/platforms:release_web_wasm32"}
+
+_web_identity_transition = transition(
+    implementation = _web_identity_transition_impl,
+    inputs = [],
+    outputs = ["//command_line_option:platforms"],
+)
+
+def _web_core_consumer_identity_impl(ctx):
+    if len(ctx.attr.unity) != 1 or len(ctx.attr.godot) != 1:
+        fail("each Web binding must resolve to exactly one configured target")
+    unity_info = ctx.attr.unity[0][DistributionFragmentInfo]
+    godot_info = ctx.attr.godot[0][DistributionFragmentInfo]
+    unity_entries = unity_info.entries.to_list()
+    godot_entries = godot_info.entries.to_list()
+    unity_paths = sorted([file.path for file in unity_entries])
+    godot_paths = sorted([file.path for file in godot_entries])
+    if unity_paths != godot_paths:
+        fail("Unity and Godot binding_web targets do not consume identical Core files")
+    if len(unity_paths) != ctx.attr.expected_payload_count:
+        fail("expected %d shared Web Core payloads, found %d" % (
+            ctx.attr.expected_payload_count,
+            len(unity_paths),
+        ))
+
+    manifest = ctx.actions.declare_file(ctx.label.name + ".txt")
+    ctx.actions.write(
+        manifest,
+        "\n".join(unity_paths) + "\n",
+    )
+    return [DefaultInfo(
+        files = depset(
+            direct = [manifest],
+            transitive = [
+                unity_info.entries,
+                godot_info.entries,
+            ],
+        ),
+    )]
+
+web_core_consumer_identity = rule(
+    implementation = _web_core_consumer_identity_impl,
+    attrs = {
+        "unity": attr.label(
+            mandatory = True,
+            providers = [DistributionFragmentInfo],
+            cfg = _web_identity_transition,
+        ),
+        "godot": attr.label(
+            mandatory = True,
+            providers = [DistributionFragmentInfo],
+            cfg = _web_identity_transition,
+        ),
+        "expected_payload_count": attr.int(mandatory = True),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
     },
 )

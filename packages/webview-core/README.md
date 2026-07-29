@@ -32,13 +32,35 @@ bytes, initialization option payloads up to 4096 UTF-8 bytes, normalized
 geometry values in `0.0..1.0` with positive width and height, and diagnostic
 detail up to 1024 UTF-8 bytes.
 
+## Browser transport
+
+`core_web` compiles the same lifecycle runtime for
+`wasm32-unknown-unknown`, applies wasm-bindgen's `no-modules` target, and
+publishes the resulting JavaScript and Wasm together with the stable
+`VerveWebViewCore` facade and generated Web API Contract.
+
+The facade uses opaque `u32` handles, copied bounded payloads, one asynchronous
+Platform Backend sink, Promises, and retained per-instance event callbacks.
+`dispose` retires active work and late Backend completion emits no event.
+Missing or corrupt Wasm returns `core_load_failed`; Rust uses `panic=abort`.
+
+Both Web Binding Targets receive the exact same four Core payload Files through
+the Platform Backend provider. The equivalence gate checks File identity at
+analysis time and SHA-256 hashes at test time.
+
 ## Verification
 
 ```sh
 bazel test //packages/webview-core:all --lockfile_mode=error
 bazel build //packages/webview-core:core_native --lockfile_mode=error
+bazel build //packages/webview-core:core_web \
+  --platforms=//build/platforms:release_web_wasm32 \
+  --lockfile_mode=error
 ```
 
 The native test consumes the generated lifecycle legality vectors and invokes
 completion synchronously from the Backend callback, proving callbacks run
-without a Core lock held.
+without a Core lock held. The browser harness runs the generated 24 lifecycle
+and 20 error vectors in real Chrome and covers missing/corrupt Wasm,
+panic-abort traps, payload copying, callback retention, disposal, and late
+completion.

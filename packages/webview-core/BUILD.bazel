@@ -1,7 +1,9 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_static_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_shared_library", "rust_static_library", "rust_test")
+load("@rules_rust_wasm_bindgen//:defs.bzl", "rust_wasm_bindgen")
+load("//build:module_rules.bzl", "web_core_consumer_identity")
 load("//packages/webview-core:build/api_contract.bzl", "api_contract")
-load("//packages/webview-core:build/core.bzl", "webview_core_native", "webview_core_web")
+load("//packages/webview-core:build/core.bzl", "browser_bindgen_bundle", "webview_core_native", "webview_core_web")
 
 rust_binary(
     name = "update_api_contract",
@@ -44,6 +46,11 @@ webview_core_native(
 webview_core_web(
     name = "core_web",
     api_contract = ":api_contract",
+    payloads = [
+        ":browser_bundle",
+        ":browser_facade",
+        ":browser_web_contract",
+    ],
     visibility = ["//build/visibility:core_consumers"],
 )
 
@@ -66,6 +73,77 @@ rust_static_library(
     crate_root = "src/ffi.rs",
     edition = "2021",
     deps = [":runtime"],
+)
+
+rust_shared_library(
+    name = "browser_wasm",
+    srcs = ["src/web.rs"],
+    crate_name = "verve_webview_core_browser",
+    edition = "2021",
+    rustc_flags = [
+        "-Copt-level=s",
+        "-Cpanic=abort",
+    ],
+    target_compatible_with = ["@platforms//cpu:wasm32"],
+    deps = [
+        ":runtime",
+        "@rules_rust_wasm_bindgen//3rdparty:wasm_bindgen",
+    ],
+)
+
+rust_wasm_bindgen(
+    name = "browser_bindgen",
+    bindgen_flags = ["--no-typescript"],
+    out_name = "verve_webview_core",
+    target = "no-modules",
+    wasm_file = ":browser_wasm",
+)
+
+browser_bindgen_bundle(
+    name = "browser_bundle",
+    bindgen = ":browser_bindgen",
+)
+
+rust_shared_library(
+    name = "browser_test_wasm",
+    srcs = ["src/web.rs"],
+    crate_name = "verve_webview_core_browser_test",
+    edition = "2021",
+    rustc_flags = [
+        "--cfg=browser_transport_test",
+        "-Copt-level=s",
+        "-Cpanic=abort",
+    ],
+    target_compatible_with = ["@platforms//cpu:wasm32"],
+    deps = [
+        ":runtime",
+        "@rules_rust_wasm_bindgen//3rdparty:wasm_bindgen",
+    ],
+)
+
+rust_wasm_bindgen(
+    name = "browser_test_bindgen",
+    bindgen_flags = ["--no-typescript"],
+    out_name = "verve_webview_core_test",
+    target = "no-modules",
+    wasm_file = ":browser_test_wasm",
+)
+
+filegroup(
+    name = "browser_facade",
+    srcs = ["web/verve_webview_core_facade.js"],
+)
+
+filegroup(
+    name = "browser_web_contract",
+    srcs = ["generated/web/api-contract.js"],
+)
+
+web_core_consumer_identity(
+    name = "browser_consumer_identity",
+    expected_payload_count = 4,
+    godot = "//packages/webview-godot:binding_web",
+    unity = "//packages/webview-unity:binding_web",
 )
 
 cc_library(
@@ -117,4 +195,56 @@ sh_test(
     name = "contract_snapshot_shape_test",
     srcs = ["tests/contract_snapshot_shape_test.sh"],
     data = glob(["generated/**"], allow_empty = True),
+)
+
+sh_test(
+    name = "browser_bundle_shape_test",
+    srcs = ["tests/browser_bundle_shape_test.sh"],
+    args = [
+        "$(locations :browser_bindgen)",
+        "$(location :browser_facade)",
+    ],
+    data = [
+        ":browser_bindgen",
+        ":browser_facade",
+    ],
+)
+
+sh_test(
+    name = "browser_harness_test",
+    srcs = ["tests/browser_harness_test.sh"],
+    args = [
+        "$(location tests/browser_harness.py)",
+        "$(locations :browser_bindgen)",
+        "$(locations :browser_test_bindgen)",
+        "$(location :browser_facade)",
+        "$(location tests/browser_harness.html)",
+        "$(location tests/browser_harness.js)",
+        "$(location tests/load_failure_harness.html)",
+        "$(location tests/load_failure_harness.js)",
+        "$(location tests/trap_harness.html)",
+        "$(location tests/trap_harness.js)",
+        "$(location generated/conformance/api-contract.json)",
+    ],
+    data = [
+        ":browser_bindgen",
+        ":browser_test_bindgen",
+        ":browser_facade",
+        "generated/conformance/api-contract.json",
+        "tests/browser_harness.html",
+        "tests/browser_harness.js",
+        "tests/browser_harness.py",
+        "tests/load_failure_harness.html",
+        "tests/load_failure_harness.js",
+        "tests/trap_harness.html",
+        "tests/trap_harness.js",
+    ],
+    tags = ["no-sandbox"],
+)
+
+sh_test(
+    name = "browser_consumer_identity_test",
+    srcs = ["tests/browser_consumer_identity_test.sh"],
+    args = ["$(locations :browser_consumer_identity)"],
+    data = [":browser_consumer_identity"],
 )

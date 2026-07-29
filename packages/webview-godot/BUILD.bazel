@@ -41,7 +41,7 @@ godot_binding(
     backend = "//packages/webview-web:backend",
     compatibility = "//compatibility:compatibility.json",
     platform = "web",
-    visibility = ["//visibility:private"],
+    visibility = ["//packages/webview-core:__pkg__"],
 )
 
 engine_sdk_distribution(
