@@ -1,0 +1,10 @@
+{
+  "abi_version": 1,
+  "capabilities": 7,
+  "capability_names": [
+    "backend_command_sink",
+    "completion_event_sink",
+    "diagnostic_sink"
+  ],
+  "schema_version": 1
+}

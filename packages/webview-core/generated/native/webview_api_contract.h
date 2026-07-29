@@ -26,9 +26,14 @@ typedef enum verve_webview_error_code {
   VERVE_WEBVIEW_INTERNAL_FAILURE = 500,
 } verve_webview_error_code;
 
+typedef struct verve_webview_bytes_view {
+  const uint8_t *data;
+  uint32_t length;
+} verve_webview_bytes_view;
+
 typedef struct verve_webview_result {
   uint32_t code;
-  const char *diagnostic_detail;
+  verve_webview_bytes_view diagnostic_detail;
 } verve_webview_result;
 
 #endif

@@ -1,4 +1,5 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_static_library", "rust_test")
 load("//packages/webview-core:build/api_contract.bzl", "api_contract")
 load("//packages/webview-core:build/core.bzl", "webview_core_native", "webview_core_web")
 
@@ -16,7 +17,10 @@ api_contract(
     generator = ":update_api_contract",
     snapshots = {
         "rust": ["generated/rust/api_contract.rs"],
-        "native": ["generated/native/webview_api_contract.h"],
+        "native": [
+            "generated/native/webview_api_contract.h",
+            "generated/native/webview_lifecycle_conformance.h",
+        ],
         "web": ["generated/web/api-contract.js"],
         "unity": ["generated/unity/WebViewContract.g.cs"],
         "godot": ["generated/godot/webview_contract.gd"],
@@ -29,6 +33,11 @@ api_contract(
 webview_core_native(
     name = "core_native",
     api_contract = ":api_contract",
+    abi_metadata = "native/abi-metadata.json",
+    payloads = [
+        ":native_abi",
+        ":native_headers",
+    ],
     visibility = ["//build/visibility:core_consumers"],
 )
 
@@ -36,6 +45,56 @@ webview_core_web(
     name = "core_web",
     api_contract = ":api_contract",
     visibility = ["//build/visibility:core_consumers"],
+)
+
+rust_library(
+    name = "runtime",
+    srcs = [
+        "generated/rust/api_contract.rs",
+        "src/lib.rs",
+    ],
+    crate_name = "verve_webview_core",
+    crate_root = "src/lib.rs",
+    edition = "2021",
+    visibility = ["//build/visibility:core_consumers"],
+)
+
+rust_static_library(
+    name = "native_abi",
+    srcs = ["src/ffi.rs"],
+    crate_name = "verve_webview_core_ffi",
+    crate_root = "src/ffi.rs",
+    edition = "2021",
+    deps = [":runtime"],
+)
+
+cc_library(
+    name = "native_headers",
+    hdrs = [
+        "generated/native/webview_api_contract.h",
+        "generated/native/webview_lifecycle_conformance.h",
+        "include/webview_core.h",
+    ],
+    includes = [
+        "generated/native",
+        "include",
+    ],
+)
+
+rust_test(
+    name = "lifecycle_test",
+    srcs = ["tests/lifecycle_test.rs"],
+    edition = "2021",
+    deps = [":runtime"],
+)
+
+cc_test(
+    name = "native_abi_test",
+    srcs = ["tests/native_abi_test.c"],
+    deps = [
+        ":native_abi",
+        ":native_headers",
+    ],
 )
 
 sh_test(

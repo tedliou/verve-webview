@@ -25,6 +25,36 @@ pub enum PublicErrorCode {
     InternalFailure = 500,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum LifecycleState {
+    Uninitialized,
+    InitializedClosed,
+    SurfaceOpen,
+    Disposing,
+    Disposed,
+    Invalidated,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OperationKind {
+    Initialize,
+    Open,
+    Close,
+    Dispose,
+}
+
+pub fn is_legal_pre_state(operation: OperationKind, state: LifecycleState) -> bool {
+    matches!((operation, state),
+        (OperationKind::Initialize, LifecycleState::Uninitialized)
+        | (OperationKind::Open, LifecycleState::InitializedClosed)
+        | (OperationKind::Open, LifecycleState::SurfaceOpen)
+        | (OperationKind::Close, LifecycleState::SurfaceOpen)
+        | (OperationKind::Dispose, LifecycleState::Uninitialized)
+        | (OperationKind::Dispose, LifecycleState::InitializedClosed)
+        | (OperationKind::Dispose, LifecycleState::SurfaceOpen)
+    )
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WebViewResult {
     pub code: PublicErrorCode,

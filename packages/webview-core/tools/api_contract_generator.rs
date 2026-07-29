@@ -240,10 +240,16 @@ struct ErrorCode {
     state_effect: String,
 }
 
+struct Operation {
+    name: String,
+    legal_pre_states: Vec<String>,
+}
+
 struct Contract {
     source: Json,
     version: String,
-    operations: Vec<String>,
+    lifecycle_states: Vec<String>,
+    operations: Vec<Operation>,
     errors: Vec<ErrorCode>,
 }
 
@@ -281,6 +287,13 @@ fn validate_contract(contract_path: &Path, registry_path: &Path) -> Result<Contr
         return Err("diagnostic_detail.maximum_bytes must remain 1024".to_owned());
     }
 
+    let lifecycle = field(root, "lifecycle", "API Contract")?.object("lifecycle")?;
+    let lifecycle_states = field(lifecycle, "states", "lifecycle")?
+        .array("lifecycle.states")?
+        .iter()
+        .map(|state| state.string("lifecycle state").map(str::to_owned))
+        .collect::<Result<Vec<_>, _>>()?;
+
     let operations_json = field(root, "operations", "API Contract")?.array("operations")?;
     let mut operations = Vec::new();
     let mut operation_names = BTreeSet::new();
@@ -295,7 +308,15 @@ fn validate_contract(contract_path: &Path, registry_path: &Path) -> Result<Contr
         if !operation_names.insert(name.clone()) {
             return Err(format!("duplicate operation name {name}"));
         }
-        operations.push(name);
+        let legal_pre_states = field(object, "legal_pre_states", "operation")?
+            .array("operation.legal_pre_states")?
+            .iter()
+            .map(|state| state.string("legal pre-state").map(str::to_owned))
+            .collect::<Result<Vec<_>, _>>()?;
+        operations.push(Operation {
+            name,
+            legal_pre_states,
+        });
     }
     let required_operations = BTreeSet::from([
         "initialize".to_owned(),
@@ -403,6 +424,7 @@ fn validate_contract(contract_path: &Path, registry_path: &Path) -> Result<Contr
     Ok(Contract {
         source,
         version,
+        lifecycle_states,
         operations,
         errors,
     })
@@ -488,12 +510,38 @@ fn render(contract: &Contract) -> BTreeMap<&'static str, String> {
     for error in &contract.errors {
         rust.push_str(&format!("    {} = {},\n", pascal(&error.name), error.id));
     }
-    rust.push_str("}\n\n#[derive(Clone, Debug, Eq, PartialEq)]\npub struct WebViewResult {\n    pub code: PublicErrorCode,\n    pub diagnostic_detail: Option<String>,\n}\n\nimpl WebViewResult {\n    pub fn is_success(&self) -> bool { self.code == PublicErrorCode::Ok }\n}\n\npub const OPERATIONS: &[&str] = &[");
+    rust.push_str("}\n\n#[derive(Clone, Copy, Debug, Eq, PartialEq)]\npub enum LifecycleState {\n");
+    for state in &contract.lifecycle_states {
+        rust.push_str(&format!("    {},\n", pascal(state)));
+    }
+    rust.push_str("}\n\n#[derive(Clone, Copy, Debug, Eq, PartialEq)]\npub enum OperationKind {\n");
+    for operation in &contract.operations {
+        rust.push_str(&format!("    {},\n", pascal(&operation.name)));
+    }
+    rust.push_str("}\n\npub fn is_legal_pre_state(operation: OperationKind, state: LifecycleState) -> bool {\n    matches!((operation, state),\n");
+    let stable_states: BTreeSet<&str> =
+        contract.lifecycle_states.iter().map(String::as_str).collect();
+    let mut first = true;
+    for operation in &contract.operations {
+        for state in &operation.legal_pre_states {
+            if !stable_states.contains(state.as_str()) {
+                continue;
+            }
+            rust.push_str(if first { "        " } else { "        | " });
+            rust.push_str(&format!(
+                "(OperationKind::{}, LifecycleState::{})\n",
+                pascal(&operation.name),
+                pascal(state)
+            ));
+            first = false;
+        }
+    }
+    rust.push_str("    )\n}\n\n#[derive(Clone, Debug, Eq, PartialEq)]\npub struct WebViewResult {\n    pub code: PublicErrorCode,\n    pub diagnostic_detail: Option<String>,\n}\n\nimpl WebViewResult {\n    pub fn is_success(&self) -> bool { self.code == PublicErrorCode::Ok }\n}\n\npub const OPERATIONS: &[&str] = &[");
     for (index, operation) in contract.operations.iter().enumerate() {
         if index > 0 {
             rust.push_str(", ");
         }
-        rust.push_str(&json_string(operation));
+        rust.push_str(&json_string(&operation.name));
     }
     rust.push_str("];\n");
     outputs.insert("rust/api_contract.rs", rust);
@@ -506,8 +554,22 @@ fn render(contract: &Contract) -> BTreeMap<&'static str, String> {
             error.id
         ));
     }
-    native.push_str("} verve_webview_error_code;\n\ntypedef struct verve_webview_result {\n  uint32_t code;\n  const char *diagnostic_detail;\n} verve_webview_result;\n\n#endif\n");
+    native.push_str("} verve_webview_error_code;\n\ntypedef struct verve_webview_bytes_view {\n  const uint8_t *data;\n  uint32_t length;\n} verve_webview_bytes_view;\n\ntypedef struct verve_webview_result {\n  uint32_t code;\n  verve_webview_bytes_view diagnostic_detail;\n} verve_webview_result;\n\n#endif\n");
     outputs.insert("native/webview_api_contract.h", native);
+
+    let mut native_vectors = String::from("/* @generated from api-contract.yaml; do not edit. */\n#ifndef VERVE_WEBVIEW_LIFECYCLE_CONFORMANCE_H\n#define VERVE_WEBVIEW_LIFECYCLE_CONFORMANCE_H\n#include <stdint.h>\n\ntypedef struct verve_webview_lifecycle_legality_vector {\n  uint32_t operation;\n  uint32_t state;\n  uint32_t is_legal;\n} verve_webview_lifecycle_legality_vector;\n\nstatic const verve_webview_lifecycle_legality_vector VERVE_WEBVIEW_LIFECYCLE_LEGALITY_VECTORS[] = {\n");
+    for (operation_index, operation) in contract.operations.iter().enumerate() {
+        for (state_index, state) in contract.lifecycle_states.iter().enumerate() {
+            native_vectors.push_str(&format!(
+                "  {{{}, {}, {}}},\n",
+                operation_index + 1,
+                state_index + 1,
+                u8::from(operation.legal_pre_states.contains(state))
+            ));
+        }
+    }
+    native_vectors.push_str("};\n\n#define VERVE_WEBVIEW_LIFECYCLE_LEGALITY_VECTOR_COUNT \\\n+  (sizeof(VERVE_WEBVIEW_LIFECYCLE_LEGALITY_VECTORS) / \\\n+   sizeof(VERVE_WEBVIEW_LIFECYCLE_LEGALITY_VECTORS[0]))\n\n#endif\n");
+    outputs.insert("native/webview_lifecycle_conformance.h", native_vectors);
 
     let mut web = String::from("// @generated from api-contract.yaml; do not edit.\nexport const PublicErrorCode = Object.freeze({\n");
     for error in &contract.errors {
@@ -518,7 +580,7 @@ fn render(contract: &Contract) -> BTreeMap<&'static str, String> {
         if index > 0 {
             web.push_str(", ");
         }
-        web.push_str(&json_string(operation));
+        web.push_str(&json_string(&operation.name));
     }
     web.push_str("]);\n\nexport const isSuccess = result => result.code === PublicErrorCode.ok;\n");
     outputs.insert("web/api-contract.js", web);
@@ -539,7 +601,7 @@ fn render(contract: &Contract) -> BTreeMap<&'static str, String> {
 
     let mut docs = format!("# WebView SDK API Contract {}\n\nGenerated from `api-contract.yaml`. Expected failures are returned as WebView Result values.\n\n## Operations\n\n", contract.version);
     for operation in &contract.operations {
-        docs.push_str(&format!("- `{operation}`\n"));
+        docs.push_str(&format!("- `{}`\n", operation.name));
     }
     docs.push_str("\n## Public Error Codes\n\n| ID | Canonical name | Applicable operations | State effect | Caller action |\n|---:|---|---|---|---|\n");
     for error in &contract.errors {

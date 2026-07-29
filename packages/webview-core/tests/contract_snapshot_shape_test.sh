@@ -9,4 +9,6 @@ for group in "${groups[@]}"; do
   test "$(find -L "${root}/generated/${group}" -type f | wc -l)" -gt 0
 done
 
-test "$(find -L "${root}/generated" -type f | wc -l)" -eq 7
+test -f "${root}/generated/native/webview_api_contract.h"
+test -f "${root}/generated/native/webview_lifecycle_conformance.h"
+test "$(find -L "${root}/generated" -type f | wc -l)" -eq 8

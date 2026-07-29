@@ -11,12 +11,19 @@ load("//build:release_version.bzl", "ReleaseVersionInfo")
 
 def _core_payload_impl(ctx):
     contract = ctx.attr.api_contract[ApiContractInfo]
+    payload_files = depset(transitive = [
+        target[DefaultInfo].files
+        for target in ctx.attr.payloads
+    ])
     return [
-        DefaultInfo(),
+        DefaultInfo(files = depset(
+            direct = [ctx.file.abi_metadata] if ctx.file.abi_metadata else [],
+            transitive = [payload_files],
+        )),
         CorePayloadInfo(
             transport = ctx.attr.transport,
-            payloads = {},
-            abi_metadata = None,
+            payloads = {ctx.attr.transport: payload_files},
+            abi_metadata = ctx.file.abi_metadata,
             conformance = contract.conformance,
         ),
     ]
@@ -32,6 +39,12 @@ core_payload = rule(
             mandatory = True,
             values = ["native", "web"],
         ),
+        # Core source is platform-neutral, but final native archive linking
+        # belongs to each later Binding Target's registered platform toolchain.
+        # Build the implementation here in exec configuration so skeleton
+        # transitions validate it without pretending a target linker exists.
+        "payloads": attr.label_list(cfg = "exec"),
+        "abi_metadata": attr.label(allow_single_file = [".json"]),
     },
 )
 
