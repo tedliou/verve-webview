@@ -1,1 +1,20 @@
-{"platform":"android","schema_version":1}
+{
+  "api_level": 35,
+  "build_tools_version": "35.0.0",
+  "java_release": 11,
+  "min_sdk": 24,
+  "payloads": [
+    {
+      "abi": "arm64-v8a",
+      "key": "release/arm64-v8a/verve-webview.aar",
+      "profile": "release"
+    },
+    {
+      "abi": "x86_64",
+      "key": "verification/x86_64/verve-webview.aar",
+      "profile": "verification"
+    }
+  ],
+  "platform": "android",
+  "schema_version": 1
+}

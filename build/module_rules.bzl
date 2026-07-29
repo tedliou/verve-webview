@@ -55,7 +55,16 @@ def _platform_backend_impl(ctx):
             ctx.attr.platform,
             ctx.attr.required_transport,
         ))
-    payloads = core.payloads if core.transport == "web" else {}
+    if len(ctx.attr.payloads) != len(ctx.attr.payload_keys):
+        fail("payloads and payload_keys must have identical lengths")
+    if len(ctx.attr.payload_keys) != len({key: True for key in ctx.attr.payload_keys}):
+        fail("Platform Backend payload keys must be unique")
+    payloads = {
+        key: target[DefaultInfo].files
+        for key, target in zip(ctx.attr.payload_keys, ctx.attr.payloads)
+    }
+    if not payloads and core.transport == "web":
+        payloads = core.payloads
     payload_files = depset(transitive = payloads.values())
     return [
         DefaultInfo(files = depset(
@@ -84,6 +93,36 @@ platform_backend = rule(
         "runtime_metadata": attr.label(
             mandatory = True,
             allow_single_file = [".json"],
+        ),
+        # Platform-specific compiler helpers retain their native providers and
+        # produce packaging payloads in execution configuration. The canonical
+        # Backend label remains target-compatible with the logical platform
+        # without pretending every host has a target C/C++ toolchain.
+        "payloads": attr.label_list(cfg = "exec"),
+        "payload_keys": attr.string_list(),
+    },
+)
+
+def _platform_backend_payload_manifest_impl(ctx):
+    backend = ctx.attr.backend[PlatformBackendInfo]
+    output = ctx.actions.declare_file(ctx.label.name + ".txt")
+    lines = ["platform=" + backend.platform]
+    payload_sets = []
+    for key in sorted(backend.payloads.keys()):
+        lines.append("payload=" + key)
+        payload_sets.append(backend.payloads[key])
+    ctx.actions.write(output, "\n".join(lines) + "\n")
+    return [DefaultInfo(files = depset(
+        direct = [output, backend.runtime_metadata],
+        transitive = payload_sets,
+    ))]
+
+platform_backend_payload_manifest = rule(
+    implementation = _platform_backend_payload_manifest_impl,
+    attrs = {
+        "backend": attr.label(
+            mandatory = True,
+            providers = [PlatformBackendInfo],
         ),
     },
 )
