@@ -1,10 +1,12 @@
 load("//build:module_rules.bzl", "distribution_fragment")
 
-def unity_adapter(name, api_contract, compatibility, visibility):
+def unity_adapter(name, api_contract, compatibility, srcs, visibility):
     distribution_fragment(
         name = name,
         api_contract = api_contract,
+        api_contract_group = "unity",
         compatibility = compatibility,
+        entries = srcs,
         platform = "engine",
         visibility = visibility,
     )

@@ -24,6 +24,34 @@ namespace Verve.WebView {
     InternalFailure = 500,
   }
 
+  internal static class WebViewErrorCodeMapping {
+    internal static bool TryFromWire(uint wireCode, out WebViewErrorCode code) {
+      switch (wireCode) {
+        case 0: code = WebViewErrorCode.Ok; return true;
+        case 100: code = WebViewErrorCode.InvalidOptions; return true;
+        case 101: code = WebViewErrorCode.InvalidUrl; return true;
+        case 102: code = WebViewErrorCode.InvalidGeometry; return true;
+        case 200: code = WebViewErrorCode.NotInitialized; return true;
+        case 201: code = WebViewErrorCode.AlreadyInitialized; return true;
+        case 202: code = WebViewErrorCode.OperationInProgress; return true;
+        case 203: code = WebViewErrorCode.Disposed; return true;
+        case 204: code = WebViewErrorCode.SurfaceNotOpen; return true;
+        case 205: code = WebViewErrorCode.SurfaceInUse; return true;
+        case 300: code = WebViewErrorCode.HostUnavailable; return true;
+        case 301: code = WebViewErrorCode.HostLost; return true;
+        case 302: code = WebViewErrorCode.BackendFailure; return true;
+        case 303: code = WebViewErrorCode.CleanupFailed; return true;
+        case 400: code = WebViewErrorCode.CoreLoadFailed; return true;
+        case 401: code = WebViewErrorCode.AbiMismatch; return true;
+        case 402: code = WebViewErrorCode.RuntimeUnavailable; return true;
+        case 403: code = WebViewErrorCode.UnsupportedEnvironment; return true;
+        case 404: code = WebViewErrorCode.DistributionInvalid; return true;
+        case 500: code = WebViewErrorCode.InternalFailure; return true;
+        default: code = WebViewErrorCode.AbiMismatch; return false;
+      }
+    }
+  }
+
   public readonly struct WebViewResult {
     public WebViewErrorCode Code { get; }
     public string? DiagnosticDetail { get; }

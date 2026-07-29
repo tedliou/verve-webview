@@ -1,0 +1,7 @@
+{
+  "name": "com.tedliou.verve-webview",
+  "version": "0.0.0",
+  "displayName": "Verve WebView for Unity",
+  "description": "Unity Engine Adapter test package.",
+  "unity": "2021.3"
+}

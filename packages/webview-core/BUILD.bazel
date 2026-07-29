@@ -32,6 +32,12 @@ api_contract(
     visibility = ["//build/visibility:core_consumers"],
 )
 
+filegroup(
+    name = "unity_contract_snapshot",
+    srcs = ["generated/unity/WebViewContract.g.cs"],
+    visibility = ["//packages/webview-unity:__pkg__"],
+)
+
 webview_core_native(
     name = "core_native",
     api_contract = ":api_contract",

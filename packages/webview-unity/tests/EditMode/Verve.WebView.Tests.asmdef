@@ -1,0 +1,14 @@
+{
+  "name": "Verve.WebView.Tests",
+  "rootNamespace": "Verve.WebView.Tests",
+  "includePlatforms": [
+    "Editor"
+  ],
+  "references": [
+    "Verve.WebView"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}

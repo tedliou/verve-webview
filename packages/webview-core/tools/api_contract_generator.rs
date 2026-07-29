@@ -589,7 +589,15 @@ fn render(contract: &Contract) -> BTreeMap<&'static str, String> {
     for error in &contract.errors {
         unity.push_str(&format!("    {} = {},\n", pascal(&error.name), error.id));
     }
-    unity.push_str("  }\n\n  public readonly struct WebViewResult {\n    public WebViewErrorCode Code { get; }\n    public string? DiagnosticDetail { get; }\n    public bool IsSuccess => Code == WebViewErrorCode.Ok;\n\n    public WebViewResult(WebViewErrorCode code, string? diagnosticDetail = null) {\n      Code = code;\n      DiagnosticDetail = diagnosticDetail;\n    }\n  }\n}\n");
+    unity.push_str("  }\n\n  internal static class WebViewErrorCodeMapping {\n    internal static bool TryFromWire(uint wireCode, out WebViewErrorCode code) {\n      switch (wireCode) {\n");
+    for error in &contract.errors {
+        unity.push_str(&format!(
+            "        case {}: code = WebViewErrorCode.{}; return true;\n",
+            error.id,
+            pascal(&error.name)
+        ));
+    }
+    unity.push_str("        default: code = WebViewErrorCode.AbiMismatch; return false;\n      }\n    }\n  }\n\n  public readonly struct WebViewResult {\n    public WebViewErrorCode Code { get; }\n    public string? DiagnosticDetail { get; }\n    public bool IsSuccess => Code == WebViewErrorCode.Ok;\n\n    public WebViewResult(WebViewErrorCode code, string? diagnosticDetail = null) {\n      Code = code;\n      DiagnosticDetail = diagnosticDetail;\n    }\n  }\n}\n");
     outputs.insert("unity/WebViewContract.g.cs", unity);
 
     let mut godot = String::from("# @generated from api-contract.yaml; do not edit.\nclass_name WebViewResult\nextends RefCounted\n\nenum ErrorCode {\n");

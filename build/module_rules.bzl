@@ -128,9 +128,11 @@ platform_backend_payload_manifest = rule(
 
 def _fragment_impl(ctx):
     platform = ctx.attr.platform
-    entry_sets = []
+    entry_sets = [target[DefaultInfo].files for target in ctx.attr.entries]
     if ctx.attr.api_contract:
-        ctx.attr.api_contract[ApiContractInfo]
+        contract = ctx.attr.api_contract[ApiContractInfo]
+        if ctx.attr.api_contract_group:
+            entry_sets.append(getattr(contract, ctx.attr.api_contract_group))
     if ctx.attr.adapter:
         ctx.attr.adapter[DistributionFragmentInfo]
     if ctx.attr.backend:
@@ -177,8 +179,12 @@ distribution_fragment = rule(
             allow_single_file = [".json"],
         ),
         "api_contract": attr.label(providers = [ApiContractInfo]),
+        "api_contract_group": attr.string(
+            values = ["", "unity", "godot"],
+        ),
         "adapter": attr.label(providers = [DistributionFragmentInfo]),
         "backend": attr.label(providers = [PlatformBackendInfo]),
+        "entries": attr.label_list(allow_files = True),
         "_release_version": attr.label(
             default = "//build:release_version",
             providers = [ReleaseVersionInfo],

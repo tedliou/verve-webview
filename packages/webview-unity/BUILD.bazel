@@ -1,10 +1,16 @@
 load("//build:module_rules.bzl", "engine_sdk_distribution")
 load("//packages/webview-unity:build/unity_adapter.bzl", "unity_adapter", "unity_binding")
 
+filegroup(
+    name = "adapter_sources",
+    srcs = glob(["src/adapter/*.cs"]),
+)
+
 unity_adapter(
     name = "adapter",
     api_contract = "//packages/webview-core:api_contract",
     compatibility = "//compatibility:compatibility.json",
+    srcs = [":adapter_sources"],
     visibility = ["//visibility:private"],
 )
 
@@ -55,4 +61,30 @@ engine_sdk_distribution(
     release_version = "//build:release_version",
     target_compatible_with = ["//build/platforms:canonical_aggregation_capability"],
     visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "adapter_contract_test",
+    srcs = ["tests/adapter_contract_test.sh"],
+    args = ["$(locations :adapter)"],
+    data = [":adapter"],
+)
+
+sh_test(
+    name = "editmode_test",
+    srcs = ["tests/run_editmode_tests.sh"],
+    data = [
+        "//packages/webview-core:unity_contract_snapshot",
+    ] + glob([
+        "src/adapter/*.cs",
+        "tests/EditMode/*.cs",
+        "tests/EditMode/*.asmdef",
+        "tests/EditModeProject/**",
+        "tests/Runtime/*.asmdef",
+        "tests/package.json",
+    ]),
+    tags = [
+        "manual",
+        "no-sandbox",
+    ],
 )
