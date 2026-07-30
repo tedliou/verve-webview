@@ -1,0 +1,10 @@
+[application]
+config/name="Verve WebView Godot Adapter Tests"
+run/main_scene=""
+
+[display]
+window/size/viewport_width=200
+window/size/viewport_height=100
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

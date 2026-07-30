@@ -25,11 +25,19 @@ enum ErrorCode {
   INTERNAL_FAILURE = 500,
 }
 
-var code: ErrorCode
-var diagnostic_detail: String
+var _code: ErrorCode
+var _diagnostic_detail: String
+
+var code: ErrorCode:
+  get: return _code
+  set(_value): push_error("WebViewResult.code is read-only.")
+var diagnostic_detail: String:
+  get: return _diagnostic_detail
+  set(_value): push_error("WebViewResult.diagnostic_detail is read-only.")
 var is_success: bool:
-  get: return code == ErrorCode.OK
+  get: return _code == ErrorCode.OK
+  set(_value): push_error("WebViewResult.is_success is read-only.")
 
 func _init(value: ErrorCode, detail: String = ""):
-  code = value
-  diagnostic_detail = detail
+  _code = value
+  _diagnostic_detail = detail

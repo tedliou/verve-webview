@@ -38,6 +38,12 @@ filegroup(
     visibility = ["//packages/webview-unity:__pkg__"],
 )
 
+filegroup(
+    name = "godot_contract_snapshot",
+    srcs = ["generated/godot/webview_contract.gd"],
+    visibility = ["//packages/webview-godot:__pkg__"],
+)
+
 webview_core_native(
     name = "core_native",
     api_contract = ":api_contract",

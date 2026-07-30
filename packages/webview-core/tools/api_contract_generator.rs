@@ -604,7 +604,7 @@ fn render(contract: &Contract) -> BTreeMap<&'static str, String> {
     for error in &contract.errors {
         godot.push_str(&format!("  {} = {},\n", error.name.to_ascii_uppercase(), error.id));
     }
-    godot.push_str("}\n\nvar code: ErrorCode\nvar diagnostic_detail: String\nvar is_success: bool:\n  get: return code == ErrorCode.OK\n\nfunc _init(value: ErrorCode, detail: String = \"\"):\n  code = value\n  diagnostic_detail = detail\n");
+    godot.push_str("}\n\nvar _code: ErrorCode\nvar _diagnostic_detail: String\n\nvar code: ErrorCode:\n  get: return _code\n  set(_value): push_error(\"WebViewResult.code is read-only.\")\nvar diagnostic_detail: String:\n  get: return _diagnostic_detail\n  set(_value): push_error(\"WebViewResult.diagnostic_detail is read-only.\")\nvar is_success: bool:\n  get: return _code == ErrorCode.OK\n  set(_value): push_error(\"WebViewResult.is_success is read-only.\")\n\nfunc _init(value: ErrorCode, detail: String = \"\"):\n  _code = value\n  _diagnostic_detail = detail\n");
     outputs.insert("godot/webview_contract.gd", godot);
 
     let mut docs = format!("# WebView SDK API Contract {}\n\nGenerated from `api-contract.yaml`. Expected failures are returned as WebView Result values.\n\n## Operations\n\n", contract.version);

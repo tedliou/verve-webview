@@ -5,6 +5,14 @@ godot_adapter(
     name = "adapter",
     api_contract = "//packages/webview-core:api_contract",
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "src/adapter/diagnostic_detail.gd": "addons/verve_webview/diagnostic_detail.gd",
+        "src/adapter/geometry_converter.gd": "addons/verve_webview/geometry_converter.gd",
+        "src/adapter/godot_binding_registry.gd": "addons/verve_webview/godot_binding_registry.gd",
+        "src/adapter/godot_environment.gd": "addons/verve_webview/godot_environment.gd",
+        "src/adapter/webview.gd": "addons/verve_webview/webview.gd",
+        "src/adapter/webview_options.gd": "addons/verve_webview/webview_options.gd",
+    },
     visibility = ["//visibility:private"],
 )
 
@@ -55,4 +63,20 @@ engine_sdk_distribution(
     release_version = "//build:release_version",
     target_compatible_with = ["//build/platforms:canonical_aggregation_capability"],
     visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "adapter_test",
+    srcs = ["tests/run_godot_tests.sh"],
+    data = [
+        "//packages/webview-core:godot_contract_snapshot",
+    ] + glob([
+        "src/adapter/*.gd",
+        "tests/project/*.gd",
+        "tests/project/project.godot",
+    ]),
+    tags = [
+        "manual",
+        "no-sandbox",
+    ],
 )
