@@ -1,3 +1,7 @@
+# Agents.md
+
+- 如果需調用 Unity，必須使用 Unity CLI，請執行 `unity.exe help` 查詢指令用法。
+
 ## Agent skills
 
 ### Issue tracker

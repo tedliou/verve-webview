@@ -1,0 +1,5 @@
+/bazel-*
+/.issue*-bazel/
+
+__pycache__/
+*.py[cod]
