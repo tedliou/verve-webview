@@ -628,6 +628,38 @@ _sdk_outputs = rule(
     },
 )
 
+def _package_tree_zip_impl(ctx):
+    trees = ctx.attr.merge[OutputGroupInfo].package_tree.to_list()
+    if len(trees) != 1:
+        fail("SDK merge must expose exactly one package tree")
+    output = ctx.actions.declare_file(ctx.label.name + ".zip")
+    ctx.actions.run(
+        executable = ctx.executable._distribution_tool,
+        arguments = [
+            "archive-zip",
+            "--tree",
+            trees[0].path,
+            "--output",
+            output.path,
+        ],
+        inputs = depset(trees),
+        outputs = [output],
+        mnemonic = "DeterministicPackageTreeZip",
+    )
+    return [DefaultInfo(files = depset([output]))]
+
+_package_tree_zip = rule(
+    implementation = _package_tree_zip_impl,
+    attrs = {
+        "merge": attr.label(mandatory = True),
+        "_distribution_tool": attr.label(
+            default = "//build:distribution_tool",
+            executable = True,
+            cfg = "exec",
+        ),
+    },
+)
+
 def engine_sdk_distribution(
         name,
         engine,
@@ -668,17 +700,25 @@ def engine_sdk_distribution(
         visibility = ["//visibility:private"],
     )
     zip_name = "_" + name + "_zip"
-    pkg_zip(
-        name = zip_name,
-        srcs = [":" + merge_name],
-        package_dir = "com.tedliou.verve-webview" if engine == "unity" else "",
-        mode = "0644",
-        timestamp = 315532800,
-        stamp = 0,
-        allow_duplicates_with_different_content = False,
-        target_compatible_with = target_compatible_with,
-        visibility = ["//visibility:private"],
-    )
+    if engine == "unity":
+        pkg_zip(
+            name = zip_name,
+            srcs = [":" + merge_name],
+            package_dir = "com.tedliou.verve-webview",
+            mode = "0644",
+            timestamp = 315532800,
+            stamp = 0,
+            allow_duplicates_with_different_content = False,
+            target_compatible_with = target_compatible_with,
+            visibility = ["//visibility:private"],
+        )
+    else:
+        _package_tree_zip(
+            name = zip_name,
+            merge = ":" + merge_name,
+            target_compatible_with = target_compatible_with,
+            visibility = ["//visibility:private"],
+        )
     _sdk_outputs(
         name = name,
         engine = engine,

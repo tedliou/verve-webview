@@ -165,8 +165,9 @@ jobs:
           godot="$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
           test "$("$godot" --version)" = "4.7.1.stable.official.a13da4feb"
           "$godot" --headless --path verification/project --editor --quit
+          export_path="$PWD/verification/project/Build/Web/index.html"
           "$godot" --headless --path verification/project \
-            --export-release Web verification/project/Build/Web/index.html
+            --export-release Web "$export_path"
           grep -q '<!-- VERVE_WEBVIEW_CORE -->' \
             verification/project/Build/Web/index.html
           for payload in api-contract.js verve_webview_core.js \

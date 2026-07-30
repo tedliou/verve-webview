@@ -6,6 +6,7 @@ import hashlib
 import json
 import pathlib
 import shutil
+import zipfile
 
 
 def sha256(path):
@@ -26,6 +27,21 @@ def read_spec(path):
     return entries
 
 
+def expanded_entries(entries):
+    expanded = []
+    for destination, source in entries:
+        if source.is_dir():
+            for child in sorted(source.rglob("*")):
+                if child.is_symlink():
+                    raise SystemExit("distribution sources must not contain symbolic links")
+                if child.is_file():
+                    relative = child.relative_to(source).as_posix()
+                    expanded.append((destination.rstrip("/") + "/" + relative, child))
+        else:
+            expanded.append((destination, source))
+    return expanded
+
+
 def manifest_entries(entries):
     return [
         {
@@ -33,7 +49,7 @@ def manifest_entries(entries):
             "sha256": sha256(source),
             "size": source.stat().st_size,
         }
-        for destination, source in sorted(entries)
+        for destination, source in sorted(expanded_entries(entries))
     ]
 
 
@@ -48,7 +64,7 @@ def fragment(arguments):
     entries = read_spec(arguments.spec)
     tree = pathlib.Path(arguments.tree)
     tree.mkdir(parents=True, exist_ok=True)
-    for destination, source in sorted(entries):
+    for destination, source in sorted(expanded_entries(entries)):
         target = tree / destination
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
@@ -120,7 +136,7 @@ def merge(arguments):
 
     tree = pathlib.Path(arguments.tree)
     tree.mkdir(parents=True, exist_ok=True)
-    for destination, source in sorted(entries):
+    for destination, source in sorted(expanded_entries(entries)):
         target = tree / destination
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
@@ -130,6 +146,52 @@ def merge(arguments):
     installed_manifest = tree / manifest_destination
     installed_manifest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(arguments.manifest, installed_manifest)
+
+
+def extract_zip(arguments):
+    destination = pathlib.Path(arguments.tree)
+    destination.mkdir(parents=True, exist_ok=True)
+    strip_prefix = pathlib.PurePosixPath(arguments.strip_prefix)
+    with zipfile.ZipFile(arguments.archive) as archive:
+        for member in archive.infolist():
+            path = pathlib.PurePosixPath(member.filename)
+            if (
+                path.is_absolute()
+                or ".." in path.parts
+                or member.is_dir()
+                or member.filename.endswith("/")
+            ):
+                if path.is_absolute() or ".." in path.parts:
+                    raise SystemExit("ZIP member escapes extraction root")
+                continue
+            if arguments.strip_prefix:
+                try:
+                    path = path.relative_to(strip_prefix)
+                except ValueError:
+                    raise SystemExit(
+                        "ZIP member is outside required strip prefix"
+                    ) from None
+            target = destination.joinpath(*path.parts)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(member) as source, target.open("wb") as output:
+                shutil.copyfileobj(source, output)
+
+
+def archive_zip(arguments):
+    tree = pathlib.Path(arguments.tree)
+    with zipfile.ZipFile(
+        arguments.output,
+        "w",
+        compression=zipfile.ZIP_DEFLATED,
+        compresslevel=9,
+    ) as archive:
+        for source in sorted(path for path in tree.rglob("*") if path.is_file()):
+            relative = source.relative_to(tree).as_posix()
+            info = zipfile.ZipInfo(relative, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            archive.writestr(info, source.read_bytes(), compresslevel=9)
 
 
 def parser():
@@ -166,6 +228,17 @@ def parser():
     merge_parser.add_argument("--compatibility", required=True)
     merge_parser.add_argument("--release-version", required=True)
     merge_parser.set_defaults(handler=merge)
+
+    extract_parser = commands.add_parser("extract-zip")
+    extract_parser.add_argument("--archive", required=True)
+    extract_parser.add_argument("--tree", required=True)
+    extract_parser.add_argument("--strip-prefix", default="")
+    extract_parser.set_defaults(handler=extract_zip)
+
+    archive_parser = commands.add_parser("archive-zip")
+    archive_parser.add_argument("--tree", required=True)
+    archive_parser.add_argument("--output", required=True)
+    archive_parser.set_defaults(handler=archive_zip)
     return root
 
 

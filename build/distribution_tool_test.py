@@ -4,9 +4,64 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 
 
 class DistributionToolTest(unittest.TestCase):
+    def test_extract_and_archive_zip_preserve_tree_without_nesting(self):
+        tool = pathlib.Path(__file__).with_name("distribution_tool.py")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = pathlib.Path(temporary_directory)
+            source_zip = root / "source.zip"
+            with zipfile.ZipFile(source_zip, "w") as archive:
+                archive.writestr("Framework.xcframework/Info.plist", "metadata")
+                archive.writestr(
+                    "Framework.xcframework/ios-arm64/libFramework.a",
+                    "library",
+                )
+            extracted = root / "extracted"
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(tool),
+                    "extract-zip",
+                    "--archive",
+                    str(source_zip),
+                    "--tree",
+                    str(extracted),
+                    "--strip-prefix",
+                    "Framework.xcframework",
+                ],
+                check=True,
+            )
+            self.assertEqual(
+                (
+                    extracted / "Info.plist"
+                ).read_text(encoding="utf-8"),
+                "metadata",
+            )
+            output_zip = root / "output.zip"
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(tool),
+                    "archive-zip",
+                    "--tree",
+                    str(extracted),
+                    "--output",
+                    str(output_zip),
+                ],
+                check=True,
+            )
+            with zipfile.ZipFile(output_zip) as archive:
+                self.assertEqual(
+                    archive.namelist(),
+                    [
+                        "Info.plist",
+                        "ios-arm64/libFramework.a",
+                    ],
+                )
+
     def test_unity_merge_keeps_root_metadata_and_validates_package_version(self):
         tool = pathlib.Path(__file__).with_name("distribution_tool.py")
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -19,6 +19,8 @@ REQUIRED_PATHS = {
     "addons/verve_webview/bin/android/verve-webview-backend.aar",
     "addons/verve_webview/bin/android/verve-webview-godot.aar",
     "addons/verve_webview/bin/windows/verve_webview.gdextension",
+    "addons/verve_webview/bin/windows/editor/linux/x86_64/libverve_webview_godot_editor.so",
+    "addons/verve_webview/bin/windows/x86_64/verve_webview_godot.dll",
     "addons/verve_webview/bin/windows/x86_64/verve_webview_windows.dll",
     "addons/verve_webview/bin/web/api-contract.js",
     "addons/verve_webview/bin/web/verve_webview_core.js",
@@ -26,8 +28,8 @@ REQUIRED_PATHS = {
     "addons/verve_webview/bin/web/verve_webview_core_facade.js",
     "addons/verve_webview/bin/web/verve_webview_web_backend.js",
     "ios/plugins/verve_webview/verve_webview.gdip",
-    "ios/plugins/verve_webview/VerveWebViewIOS.debug.xcframework.zip",
-    "ios/plugins/verve_webview/VerveWebViewIOS.release.xcframework.zip",
+    "ios/plugins/verve_webview/VerveWebViewIOS.debug.xcframework/Info.plist",
+    "ios/plugins/verve_webview/VerveWebViewIOS.release.xcframework/Info.plist",
 }
 
 
@@ -109,16 +111,19 @@ def main(arguments: list[str]) -> int:
         xcframework = (
             tree
             / "ios/plugins/verve_webview"
-            / f"VerveWebViewIOS.{profile}.xcframework.zip"
+            / f"VerveWebViewIOS.{profile}.xcframework"
         )
-        with zipfile.ZipFile(xcframework) as bundle:
-            names = bundle.namelist()
-            if not any(name.endswith(".xcframework/Info.plist") for name in names):
-                raise AssertionError(f"{profile} iOS XCFramework metadata is missing")
-            if not any("ios-arm64" in name for name in names):
-                raise AssertionError(f"{profile} iOS device slice is missing")
-            if not any("ios-arm64_x86_64-simulator" in name for name in names):
-                raise AssertionError(f"{profile} iOS simulator slices are missing")
+        names = [
+            path.relative_to(xcframework).as_posix()
+            for path in xcframework.rglob("*")
+            if path.is_file()
+        ]
+        if "Info.plist" not in names:
+            raise AssertionError(f"{profile} iOS XCFramework metadata is missing")
+        if not any("ios-arm64" in name for name in names):
+            raise AssertionError(f"{profile} iOS device slice is missing")
+        if not any("ios-arm64_x86_64-simulator" in name for name in names):
+            raise AssertionError(f"{profile} iOS simulator slices are missing")
     return 0
 
 

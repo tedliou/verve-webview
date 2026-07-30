@@ -2,10 +2,10 @@
 extends EditorExportPlugin
 
 const PLUGIN_NAME := "VerveWebView"
-const PLUGIN_AARS := PackedStringArray([
+const PLUGIN_AARS := [
 	"verve_webview/bin/android/verve-webview-godot.aar",
 	"verve_webview/bin/android/verve-webview-backend.aar",
-])
+]
 
 
 func _get_name() -> String:
@@ -20,4 +20,4 @@ func _get_android_libraries(
 		_platform: EditorExportPlatform,
 		_debug: bool
 ) -> PackedStringArray:
-	return PLUGIN_AARS
+	return PackedStringArray(PLUGIN_AARS)

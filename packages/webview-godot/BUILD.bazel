@@ -15,6 +15,9 @@ godot_adapter(
         "src/adapter/webview.gd": "addons/verve_webview/webview.gd",
         "src/adapter/webview_options.gd": "addons/verve_webview/webview_options.gd",
     },
+    editor_gdextension_srcs = [
+        "src/bindings/windows/gdextension_entry.c",
+    ],
     plugin_config_template = "distribution/addons/verve_webview/plugin.cfg",
     visibility = ["//visibility:private"],
 )
@@ -42,10 +45,6 @@ godot_binding(
     name = "binding_ios",
     adapter = ":adapter",
     backend = "//packages/webview-ios:backend",
-    backend_entries = {
-        "debug/ios/VerveWebViewIOS.xcframework.zip": "ios/plugins/verve_webview/VerveWebViewIOS.debug.xcframework.zip",
-        "release/ios/VerveWebViewIOS.xcframework.zip": "ios/plugins/verve_webview/VerveWebViewIOS.release.xcframework.zip",
-    },
     compatibility = "//compatibility:compatibility.json",
     entries = {
         "src/bindings/ios/verve_webview.gdip": "ios/plugins/verve_webview/verve_webview.gdip",
@@ -69,6 +68,9 @@ godot_binding(
     architecture = "x86_64",
     platform = "windows",
     visibility = ["//visibility:private"],
+    windows_gdextension_srcs = [
+        "src/bindings/windows/gdextension_entry.c",
+    ],
 )
 
 godot_binding(
@@ -140,6 +142,8 @@ py_test(
     srcs = ["tests/binding_metadata_test.py"],
     data = [
         "BUILD.bazel",
+        "//build:distribution_tool.py",
+        "build/godot_adapter.bzl",
         "src/bindings/android/AndroidManifest.xml",
         "src/bindings/android/android_export_plugin.gd",
         "src/bindings/ios/verve_webview.gdip",

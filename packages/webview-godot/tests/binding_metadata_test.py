@@ -46,8 +46,12 @@ class BindingMetadataTest(unittest.TestCase):
             "VerveWebViewIOS.xcframework",
         )
         build = (ROOT / "BUILD.bazel").read_text(encoding="utf-8")
-        self.assertIn("VerveWebViewIOS.debug.xcframework.zip", build)
-        self.assertIn("VerveWebViewIOS.release.xcframework.zip", build)
+        rules = (ROOT / "build/godot_adapter.bzl").read_text(encoding="utf-8")
+        self.assertIn('commands.add_parser("extract-zip")', (
+            ROOT.parents[1] / "build/distribution_tool.py"
+        ).read_text(encoding="utf-8"))
+        self.assertIn('for profile in ["debug", "release"]', rules)
+        self.assertIn('profile + ".xcframework"', rules)
         self.assertIn("device-arm64_simulator-arm64-x86_64", build)
 
     def test_windows_gdextension_is_release_x86_64_and_webview2_is_fixed(self):
