@@ -79,6 +79,10 @@ def main():
         "\n".join(declarations),
         encoding="utf-8",
     )
+    (output / "REPO.bazel").write_text(
+        "# Generated imported release-fragment repository.\n",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 load("//build:release_version.bzl", "release_version", "use_imported_fragments")
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 
 exports_files([
     "distribution_tool.py",
@@ -31,4 +31,11 @@ py_binary(
     main = "distribution_tool.py",
     python_version = "PY3",
     visibility = ["//visibility:private"],
+)
+
+py_test(
+    name = "generate_fragment_repository_test",
+    srcs = ["generate_fragment_repository_test.py"],
+    data = ["generate_fragment_repository.py"],
+    python_version = "PY3",
 )
