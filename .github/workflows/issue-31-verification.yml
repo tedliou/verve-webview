@@ -170,6 +170,7 @@ jobs:
             //packages/webview-core:browser_consumer_identity_test \
             //packages/webview-web:browser_backend_test \
             //packages/webview-godot:binding_metadata_test \
+            --test_env=CHROME_BIN=/usr/bin/google-chrome \
             --test_output=errors
       - name: Build and black-box verify both final distributions
         run: |
