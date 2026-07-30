@@ -1,0 +1,50 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+
+exports_files([
+    "release-evidence.schema.json",
+    "shared-suites.json",
+])
+
+py_binary(
+    name = "release_evidence",
+    srcs = ["release_evidence.py"],
+    main = "release_evidence.py",
+    python_version = "PY3",
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "release_evidence_test",
+    srcs = [
+        "release_evidence.py",
+        "release_evidence_test.py",
+    ],
+    data = [
+        ":shared-suites.json",
+        "//compatibility:compatibility.json",
+    ],
+    main = "release_evidence_test.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "example_apps_test",
+    srcs = ["example_apps_test.py"],
+    data = [
+        ":shared-suites.json",
+        "//examples:example_sources",
+    ],
+    main = "example_apps_test.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "contract_matrix_test",
+    srcs = ["contract_matrix_test.py"],
+    data = [
+        ":shared-suites.json",
+        "//packages/webview-core:verification_contract_snapshots",
+    ],
+    main = "contract_matrix_test.py",
+    python_version = "PY3",
+)
