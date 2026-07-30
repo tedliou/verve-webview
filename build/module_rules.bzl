@@ -520,7 +520,10 @@ def _fragment_merge_impl(ctx):
     package_destinations["compatibility.json"] = compatibility
     package_destinations["content-manifest.json"] = manifest
     return [
-        DefaultInfo(files = depset([tree, manifest])),
+        DefaultInfo(files = depset(
+            direct = [tree, manifest],
+            transitive = [depset(destinations.values())],
+        )),
         PackageFilesInfo(
             attributes = {"mode": "0644"},
             dest_src_map = package_destinations,
@@ -644,7 +647,7 @@ def engine_sdk_distribution(
         extension = "tgz",
         mode = "0644",
         owner = "0.0",
-        ownername = "root",
+        ownername = "root.root",
         portable_mtime = True,
         stamp = 0,
         allow_duplicates_with_different_content = False,
