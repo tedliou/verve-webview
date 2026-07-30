@@ -2,6 +2,9 @@ name: Issue 31 Example Apps and verification matrix
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - codex/prototype-sdk-api-lifecycle
 
 permissions:
   contents: read
