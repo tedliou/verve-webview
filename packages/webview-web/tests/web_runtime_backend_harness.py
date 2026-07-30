@@ -36,8 +36,8 @@ def main() -> None:
         "verve_webview_core_bg.wasm",
         "verve_webview_core_facade.js",
         "verve_webview_web_backend.js",
-        "browser_backend_harness.html",
-        "browser_backend_harness.js",
+        "web_runtime_backend_harness.html",
+        "web_runtime_backend_harness.js",
         "surface_content.html",
     }
     with tempfile.TemporaryDirectory(prefix="verve-browser-backend-") as temporary:
@@ -47,7 +47,7 @@ def main() -> None:
                 shutil.copyfile(source, root / source.name)
         missing = sorted(name for name in required if not (root / name).is_file())
         if missing:
-            raise RuntimeError(f"browser Backend harness inputs are missing: {missing}")
+            raise RuntimeError(f"Web Runtime Backend harness inputs are missing: {missing}")
 
         handler = lambda *args, **kwargs: SimpleHTTPRequestHandler(
             *args, directory=root, **kwargs
@@ -68,7 +68,7 @@ def main() -> None:
                     f"--user-data-dir={windows_path(profile, chrome)}",
                     "--virtual-time-budget=10000",
                     "--dump-dom",
-                    f"http://127.0.0.1:{server.server_port}/browser_backend_harness.html",
+                    f"http://127.0.0.1:{server.server_port}/web_runtime_backend_harness.html",
                 ],
                 check=True,
                 stdout=subprocess.PIPE,

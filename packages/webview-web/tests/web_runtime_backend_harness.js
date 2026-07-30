@@ -109,7 +109,7 @@
       "device permissions must be denied"
     );
     assert(
-      window.location.pathname.endsWith("/browser_backend_harness.html"),
+      window.location.pathname.endsWith("/web_runtime_backend_harness.html"),
       "Surface content must not navigate the exported app"
     );
 
