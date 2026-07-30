@@ -32,8 +32,6 @@ def expanded_entries(entries):
     for destination, source in entries:
         if source.is_dir():
             for child in sorted(source.rglob("*")):
-                if child.is_symlink():
-                    raise SystemExit("distribution sources must not contain symbolic links")
                 if child.is_file():
                     relative = child.relative_to(source).as_posix()
                     expanded.append((destination.rstrip("/") + "/" + relative, child))
