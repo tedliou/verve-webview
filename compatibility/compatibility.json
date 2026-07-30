@@ -12,8 +12,8 @@
     {
       "engine": "unity",
       "engine_line": "2022.3",
-      "minimum_patch": "2022.3.76f1",
-      "maximum_patch": "2022.3.76f1",
+      "minimum_patch": "2022.3.62f1",
+      "maximum_patch": "2022.3.62f1",
       "platforms": ["android", "ios", "windows", "web"]
     },
     {
@@ -42,10 +42,10 @@
     },
     {
       "engine": "unity",
-      "engine_version": "2022.3.76f1",
+      "engine_version": "2022.3.62f1",
       "platform": "windows",
       "architecture": "x86_64",
-      "toolchain": {"unity_editor": "2022.3.76f1"},
+      "toolchain": {"unity_editor": "2022.3.62f1"},
       "runtime": {"mode": "package-import-build"}
     },
     {
