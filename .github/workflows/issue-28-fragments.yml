@@ -1,4 +1,4 @@
-name: Issue 28 controlled Unity fragments
+name: Issue 30 controlled Godot fragments (temporary registered path)
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ permissions:
 
 env:
   BAZEL_VERSION: 8.7.0
+  GODOT_VERSION: 4.7.1
   RELEASE_VERSION: 0.0.0-pre.0
 
 jobs:
@@ -22,30 +23,28 @@ jobs:
           chmod +x "$RUNNER_TEMP/bazel"
       - name: Build canonical fragments
         run: |
-          "$RUNNER_TEMP/bazel" build //packages/webview-unity:binding_android \
+          "$RUNNER_TEMP/bazel" build //packages/webview-godot:binding_android \
             --//build:release_version="$RELEASE_VERSION" \
             --platforms=//build/platforms:release_android_arm64
-          "$RUNNER_TEMP/bazel" build //packages/webview-unity:binding_web \
+          "$RUNNER_TEMP/bazel" build //packages/webview-godot:binding_web \
             --//build:release_version="$RELEASE_VERSION" \
             --platforms=//build/platforms:release_web_wasm32
       - name: Stage fragments
         run: |
           for platform in android web; do
             mkdir -p "staging/$platform"
-            cp -R -L "bazel-bin/packages/webview-unity/binding_${platform}.fragment-tree" "staging/$platform/tree"
-            cp "bazel-bin/packages/webview-unity/binding_${platform}.content-manifest.json" "staging/$platform/content-manifest.json"
-            cp "bazel-bin/packages/webview-unity/binding_${platform}.fragment-manifest.json" "staging/$platform/fragment-manifest.json"
+            cp -R -L "bazel-bin/packages/webview-godot/binding_${platform}.fragment-tree" "staging/$platform/tree"
+            cp "bazel-bin/packages/webview-godot/binding_${platform}.content-manifest.json" "staging/$platform/content-manifest.json"
+            cp "bazel-bin/packages/webview-godot/binding_${platform}.fragment-manifest.json" "staging/$platform/fragment-manifest.json"
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: fragment-android
+          name: godot-fragment-android
           path: staging/android
-          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: fragment-web
+          name: godot-fragment-web
           path: staging/web
-          if-no-files-found: error
 
   ios:
     runs-on: macos-15
@@ -61,20 +60,19 @@ jobs:
           chmod +x "$RUNNER_TEMP/bazel"
       - name: Build canonical fragment
         run: |
-          "$RUNNER_TEMP/bazel" build //packages/webview-unity:binding_ios \
+          "$RUNNER_TEMP/bazel" build //packages/webview-godot:binding_ios \
             --//build:release_version="$RELEASE_VERSION" \
             --platforms=//build/platforms:release_ios_xcframework
       - name: Stage fragment
         run: |
           mkdir -p staging/ios
-          cp -R -L bazel-bin/packages/webview-unity/binding_ios.fragment-tree staging/ios/tree
-          cp bazel-bin/packages/webview-unity/binding_ios.content-manifest.json staging/ios/content-manifest.json
-          cp bazel-bin/packages/webview-unity/binding_ios.fragment-manifest.json staging/ios/fragment-manifest.json
+          cp -R -L bazel-bin/packages/webview-godot/binding_ios.fragment-tree staging/ios/tree
+          cp bazel-bin/packages/webview-godot/binding_ios.content-manifest.json staging/ios/content-manifest.json
+          cp bazel-bin/packages/webview-godot/binding_ios.fragment-manifest.json staging/ios/fragment-manifest.json
       - uses: actions/upload-artifact@v4
         with:
-          name: fragment-ios
+          name: godot-fragment-ios
           path: staging/ios
-          if-no-files-found: error
 
   windows:
     runs-on: windows-2025
@@ -83,28 +81,26 @@ jobs:
       - name: Install pinned Bazel
         shell: pwsh
         run: |
-          $bazel = Join-Path $env:RUNNER_TEMP "bazel.exe"
           Invoke-WebRequest `
             "https://github.com/bazelbuild/bazel/releases/download/$env:BAZEL_VERSION/bazel-$env:BAZEL_VERSION-windows-x86_64.exe" `
-            -OutFile $bazel
+            -OutFile "$env:RUNNER_TEMP/bazel.exe"
       - name: Build canonical fragment
         shell: pwsh
         run: |
-          & "$env:RUNNER_TEMP/bazel.exe" build //packages/webview-unity:binding_windows `
+          & "$env:RUNNER_TEMP/bazel.exe" build //packages/webview-godot:binding_windows `
             "--//build:release_version=$env:RELEASE_VERSION" `
             "--platforms=//build/platforms:release_windows_x86_64"
       - name: Stage fragment
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force staging/windows | Out-Null
-          Copy-Item -Recurse -Force bazel-bin/packages/webview-unity/binding_windows.fragment-tree staging/windows/tree
-          Copy-Item bazel-bin/packages/webview-unity/binding_windows.content-manifest.json staging/windows/content-manifest.json
-          Copy-Item bazel-bin/packages/webview-unity/binding_windows.fragment-manifest.json staging/windows/fragment-manifest.json
+          Copy-Item -Recurse -Force bazel-bin/packages/webview-godot/binding_windows.fragment-tree staging/windows/tree
+          Copy-Item bazel-bin/packages/webview-godot/binding_windows.content-manifest.json staging/windows/content-manifest.json
+          Copy-Item bazel-bin/packages/webview-godot/binding_windows.fragment-manifest.json staging/windows/fragment-manifest.json
       - uses: actions/upload-artifact@v4
         with:
-          name: fragment-windows
+          name: godot-fragment-windows
           path: staging/windows
-          if-no-files-found: error
 
   aggregate:
     needs: [android-web, ios, windows]
@@ -113,21 +109,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: fragment-android
+          name: godot-fragment-android
           path: release/downloads/android
       - uses: actions/download-artifact@v4
         with:
-          name: fragment-ios
+          name: godot-fragment-ios
           path: release/downloads/ios
       - uses: actions/download-artifact@v4
         with:
-          name: fragment-windows
+          name: godot-fragment-windows
           path: release/downloads/windows
       - uses: actions/download-artifact@v4
         with:
-          name: fragment-web
+          name: godot-fragment-web
           path: release/downloads/web
-      - name: Generate explicit imported-fragment repository
+      - name: Generate verified imported-fragment repository
         run: |
           python3 build/generate_fragment_repository.py \
             --downloads release/downloads \
@@ -137,29 +133,56 @@ jobs:
           curl --fail --location --output "$RUNNER_TEMP/bazel" \
             "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
           chmod +x "$RUNNER_TEMP/bazel"
-      - name: Build and verify the public SDK target
+      - name: Build and verify public Godot SDK
         run: |
-          "$RUNNER_TEMP/bazel" test //packages/webview-unity:sdk_distribution_test \
+          "$RUNNER_TEMP/bazel" test //packages/webview-godot:sdk_distribution_test \
             --//build:release_version="$RELEASE_VERSION" \
             --//build:use_imported_fragments=true \
             --platforms=//build/platforms:canonical_aggregation \
             --test_output=errors
-          "$RUNNER_TEMP/bazel" build //packages/webview-unity:sdk \
+          "$RUNNER_TEMP/bazel" build //packages/webview-godot:sdk \
             --//build:release_version="$RELEASE_VERSION" \
             --//build:use_imported_fragments=true \
             --platforms=//build/platforms:canonical_aggregation \
-            --output_groups=default,package_tree,content_manifest,provenance
-      - name: Stage final artifacts
+            --output_groups=default,package_tree,content_manifest,compatibility,provenance
+      - name: Install exact Godot editor and export templates
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/godot.zip" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          chmod +x "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          curl --fail --location --output "$RUNNER_TEMP/templates.tpz" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -q "$RUNNER_TEMP/templates.tpz" -d "$RUNNER_TEMP/templates"
+          cp "$RUNNER_TEMP/templates/templates/"* \
+            "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+      - name: Verify official Godot import and Web export
+        run: |
+          mkdir -p verification/project verification/project/Build/Web
+          unzip -q bazel-bin/packages/webview-godot/_sdk_zip.zip -d verification/project
+          cp packages/webview-godot/tests/distribution_project/* verification/project/
+          godot="$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          test "$("$godot" --version)" = "4.7.1.stable.official.a13da4feb"
+          "$godot" --headless --path verification/project --editor --quit
+          "$godot" --headless --path verification/project \
+            --export-release Web verification/project/Build/Web/index.html
+          grep -q '<!-- VERVE_WEBVIEW_CORE -->' \
+            verification/project/Build/Web/index.html
+          for payload in api-contract.js verve_webview_core.js \
+            verve_webview_core_bg.wasm verve_webview_core_facade.js \
+            verve_webview_web_backend.js; do
+            cmp "verification/project/addons/verve_webview/bin/web/$payload" \
+              "verification/project/Build/Web/VerveWebViewCore/$payload"
+          done
+      - name: Stage final artifact
         run: |
           mkdir -p release/final
-          cp bazel-bin/packages/webview-unity/_sdk_tgz.tgz \
-            "release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz"
-          cp bazel-bin/packages/webview-unity/_sdk_zip.zip \
-            "release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.zip"
-          cp -R -L bazel-bin/packages/webview-unity/_sdk_merge.package-tree \
+          cp bazel-bin/packages/webview-godot/_sdk_zip.zip \
+            "release/final/verve-webview-godot-${RELEASE_VERSION}.zip"
+          cp -R -L bazel-bin/packages/webview-godot/_sdk_merge.package-tree \
             release/final/package-tree
       - uses: actions/upload-artifact@v4
         with:
-          name: unity-sdk-distribution
+          name: godot-sdk-distribution
           path: release/final
-          if-no-files-found: error
