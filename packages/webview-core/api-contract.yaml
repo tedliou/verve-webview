@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "result": {
+    "code": {"type": "uint32", "required": true},
+    "diagnostic_detail": {
+      "type": "utf8",
+      "required": false,
+      "maximum_bytes": 1024,
+      "contractual": false,
+      "forbidden_content": [
+        "complete_url", "query", "fragment", "page_content", "headers",
+        "cookies", "credentials", "filesystem_paths", "memory_addresses",
+        "backtraces"
+      ]
+    },
+    "is_success": {
+      "type": "boolean",
+      "serialized": false,
+      "derived_from": "code == ok"
+    }
+  },
+  "lifecycle": {
+    "states": [
+      "uninitialized", "initialized_closed", "surface_open",
+      "disposing", "disposed", "invalidated"
+    ],
+    "single_flight": ["initialize", "open", "close"],
+    "preemptive_operation": "dispose",
+    "late_retired_completions": "diagnostic_only"
+  },
+  "operations": [
+    {
+      "name": "initialize",
+      "legal_pre_states": ["uninitialized"],
+      "accepted_state": "initializing",
+      "success_state": "initialized_closed",
+      "failure_state": "uninitialized",
+      "validation_or_rejection_state_effect": "unchanged"
+    },
+    {
+      "name": "open",
+      "legal_pre_states": ["initialized_closed", "surface_open"],
+      "accepted_state": "opening_or_navigating",
+      "success_state": "surface_open",
+      "first_open_failure_state": "initialized_closed",
+      "renavigation_failure_state": "surface_open_previous_url_preserved",
+      "validation_or_rejection_state_effect": "unchanged"
+    },
+    {
+      "name": "close",
+      "legal_pre_states": ["surface_open"],
+      "accepted_state": "closing",
+      "success_state": "initialized_closed",
+      "failure_state": "surface_open",
+      "host_lost_state": "initialized_closed",
+      "validation_or_rejection_state_effect": "unchanged"
+    },
+    {
+      "name": "dispose",
+      "legal_pre_states": ["uninitialized", "initialized_closed", "surface_open", "operation_in_flight"],
+      "accepted_state": "disposing",
+      "success_state": "disposed",
+      "failure_state": "disposed",
+      "preempts_in_flight_operation": true
+    }
+  ],
+  "public_error_codes": [
+    {"id": 0, "name": "ok", "description": "The operation completed successfully.", "caller_action": "Continue.", "operations": ["initialize", "open", "close", "dispose"], "state_effect": "operation_success"},
+    {"id": 100, "name": "invalid_options", "description": "Initialization options are invalid.", "caller_action": "Correct the options before retrying.", "operations": ["initialize"], "state_effect": "unchanged"},
+    {"id": 101, "name": "invalid_url", "description": "The direct open URL violates syntax or v1 URL policy.", "caller_action": "Correct the URL before retrying.", "operations": ["open"], "state_effect": "unchanged"},
+    {"id": 102, "name": "invalid_geometry", "description": "Surface geometry is non-finite, out of range, or non-positive.", "caller_action": "Correct the geometry before retrying.", "operations": ["open"], "state_effect": "unchanged"},
+    {"id": 200, "name": "not_initialized", "description": "Open or close was called before successful initialization.", "caller_action": "Initialize successfully before retrying.", "operations": ["open", "close"], "state_effect": "unchanged"},
+    {"id": 201, "name": "already_initialized", "description": "Initialize was called on an initialized SDK Instance.", "caller_action": "Reuse the initialized SDK Instance.", "operations": ["initialize"], "state_effect": "unchanged"},
+    {"id": 202, "name": "operation_in_progress", "description": "A strict single-flight operation is active.", "caller_action": "Wait for it to finish.", "operations": ["initialize", "open", "close"], "state_effect": "unchanged"},
+    {"id": 203, "name": "disposed", "description": "The SDK Instance is terminal and cannot be reused.", "caller_action": "Create a new SDK Instance.", "operations": ["initialize", "open", "close", "dispose"], "state_effect": "disposed"},
+    {"id": 204, "name": "surface_not_open", "description": "Close was called without an open WebView Surface.", "caller_action": "Open a surface before closing.", "operations": ["close"], "state_effect": "unchanged"},
+    {"id": 205, "name": "surface_in_use", "description": "Another SDK Instance owns the application Surface Lease.", "caller_action": "Close or dispose the current lease owner before retrying.", "operations": ["open"], "state_effect": "unchanged"},
+    {"id": 300, "name": "host_unavailable", "description": "No usable engine host currently exists.", "caller_action": "Retry after host availability changes.", "operations": ["initialize", "open"], "state_effect": "operation_failure"},
+    {"id": 301, "name": "host_lost", "description": "The host was permanently lost while an operation was active.", "caller_action": "Resolve a new host and retry when appropriate.", "operations": ["initialize", "open", "close", "dispose"], "state_effect": "surface_cleaned_and_initialized_closed"},
+    {"id": 302, "name": "backend_failure", "description": "A platform operation failed without a more actionable portable classification.", "caller_action": "Inspect diagnostics and retry only when appropriate.", "operations": ["initialize", "open", "close", "dispose"], "state_effect": "operation_failure"},
+    {"id": 303, "name": "cleanup_failed", "description": "Dispose cleanup failed, but the SDK Instance is terminal.", "caller_action": "Report diagnostics; do not reuse the instance.", "operations": ["dispose"], "state_effect": "disposed"},
+    {"id": 400, "name": "core_load_failed", "description": "The shared Core could not be loaded.", "caller_action": "Repair or reinstall the distribution.", "operations": ["initialize"], "state_effect": "operation_failure"},
+    {"id": 401, "name": "abi_mismatch", "description": "ABI version, capability negotiation, or a received wire ID is incompatible.", "caller_action": "Install one atomic compatible distribution.", "operations": ["initialize", "open", "close", "dispose"], "state_effect": "operation_failure"},
+    {"id": 402, "name": "runtime_unavailable", "description": "A required platform browser runtime is missing or insufficient.", "caller_action": "Install or update that runtime.", "operations": ["initialize", "open"], "state_effect": "operation_failure"},
+    {"id": 403, "name": "unsupported_environment", "description": "The engine, platform, architecture, toolchain, or Web Runtime is unsupported.", "caller_action": "Use a declared supported environment.", "operations": ["initialize"], "state_effect": "operation_failure"},
+    {"id": 404, "name": "distribution_invalid", "description": "Required payload or manifest content is missing, corrupt, or inconsistent.", "caller_action": "Reinstall a verified distribution.", "operations": ["initialize"], "state_effect": "operation_failure"},
+    {"id": 500, "name": "internal_failure", "description": "Core or Engine Adapter violated an internal invariant.", "caller_action": "Report the defect rather than retrying.", "operations": ["initialize", "open", "close", "dispose"], "state_effect": "invalidated"}
+  ]
+}

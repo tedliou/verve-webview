@@ -1,0 +1,60 @@
+module(
+    name = "verve_webview",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_android", version = "0.7.3")
+bazel_dep(name = "rules_apple", version = "4.5.3")
+bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "rules_dotnet", version = "0.21.5")
+bazel_dep(name = "rules_java", version = "9.3.0", dev_dependency = True)
+bazel_dep(name = "rules_pkg", version = "1.2.0")
+bazel_dep(name = "rules_python", version = "1.7.0")
+bazel_dep(name = "rules_rust", version = "0.71.3")
+bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.71.0")
+# Direct because project-owned platform declarations reference @platforms.
+# This is the already-resolved version recorded by MODULE.bazel.lock.
+bazel_dep(name = "platforms", version = "1.1.0")
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2021",
+    extra_target_triples = ["wasm32-unknown-unknown"],
+    versions = ["1.85.0"],
+)
+use_repo(rust, "rust_toolchains")
+register_toolchains("@rust_toolchains//:all")
+
+android_sdk = use_extension(
+    "@rules_android//rules/android_sdk_repository:rule.bzl",
+    "android_sdk_repository_extension",
+)
+android_sdk.configure(
+    api_level = 35,
+    build_tools_version = "35.0.0",
+)
+use_repo(android_sdk, "androidsdk")
+register_toolchains("@androidsdk//:sdk-toolchain", "@androidsdk//:all")
+
+local_repository = use_repo_rule(
+    "@bazel_tools//tools/build_defs/repo:local.bzl",
+    "local_repository",
+)
+local_repository(
+    name = "release_fragments",
+    path = "release/fragments",
+)
+
+http_archive = use_repo_rule(
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_archive",
+)
+http_archive(
+    name = "webview2_sdk",
+    build_file = "//third_party/webview2:BUILD.webview2.bazel",
+    sha256 = "dc4d1d9168df26b830398303e50210b6e1729f6ce5a7ac69d2c766852f489962",
+    type = "zip",
+    urls = [
+        "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.4078.44/microsoft.web.webview2.1.0.4078.44.nupkg",
+    ],
+)

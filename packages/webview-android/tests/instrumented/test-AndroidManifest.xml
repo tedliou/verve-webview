@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.tedliou.verve.webview.test">
+  <uses-sdk android:minSdkVersion="24" />
+  <instrumentation
+      android:name="com.tedliou.verve.webview.BackendInstrumentation"
+      android:targetPackage="com.tedliou.verve.webview.testhost" />
+</manifest>

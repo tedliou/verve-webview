@@ -1,0 +1,22 @@
+{
+  "minimum_runtime_version": "86.0.616.0",
+  "payloads": [
+    {
+      "architecture": "x86_64",
+      "profile": "release",
+      "runner": "windows-2022"
+    }
+  ],
+  "platform": "windows",
+  "schema_version": 1,
+  "toolchain_policy": {
+    "msvc_windows_sdk_subversions": "runner-image-evidence",
+    "runner": "windows-2022"
+  },
+  "webview2": {
+    "loader_linkage": "static",
+    "runtime_distribution": "evergreen",
+    "sdk_nuget_sha256": "dc4d1d9168df26b830398303e50210b6e1729f6ce5a7ac69d2c766852f489962",
+    "sdk_version": "1.0.4078.44"
+  }
+}

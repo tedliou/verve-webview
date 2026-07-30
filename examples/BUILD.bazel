@@ -1,0 +1,34 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+filegroup(
+    name = "example_sources",
+    srcs = glob([
+        "godot/**",
+        "unity/**",
+    ]) + ["README.md"],
+    visibility = ["//verification:__pkg__"],
+)
+
+# These are black-box consumers. Their only SDK dependencies are the public,
+# release-only Engine SDK Distribution targets.
+py_test(
+    name = "unity_example_distribution_test",
+    srcs = ["verify_example_distribution.py"],
+    args = ["unity"] + ["$(locations //packages/webview-unity:sdk)"],
+    data = [
+        "//packages/webview-unity:sdk",
+    ] + glob(["unity/**"]),
+    main = "verify_example_distribution.py",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "godot_example_distribution_test",
+    srcs = ["verify_example_distribution.py"],
+    args = ["godot"] + ["$(locations //packages/webview-godot:sdk)"],
+    data = [
+        "//packages/webview-godot:sdk",
+    ] + glob(["godot/**"]),
+    main = "verify_example_distribution.py",
+    tags = ["manual"],
+)

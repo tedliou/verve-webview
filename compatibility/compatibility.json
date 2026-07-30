@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "sdk_version": "0.0.0-pre.0",
+  "verification_profiles": [
+    {
+      "id": "android-device-arm64",
+      "platform": "android",
+      "architecture": "arm64-v8a",
+      "os_requirement": "android-7.0-or-newer-device",
+      "runtime": "android-system-webview-or-chrome"
+    },
+    {
+      "id": "ios-device-arm64",
+      "platform": "ios",
+      "architecture": "device-arm64",
+      "os_requirement": "ios-13-or-newer-device",
+      "runtime": "wkwebview"
+    },
+    {
+      "id": "ios-simulator-arm64",
+      "platform": "ios",
+      "architecture": "simulator-arm64",
+      "os_requirement": "ios-13-or-newer-simulator",
+      "runtime": "wkwebview"
+    },
+    {
+      "id": "ios-simulator-x86_64",
+      "platform": "ios",
+      "architecture": "simulator-x86_64",
+      "os_requirement": "ios-13-or-newer-simulator",
+      "runtime": "wkwebview"
+    },
+    {
+      "id": "windows-11-x86_64",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "os_requirement": "windows-11",
+      "runtime": "webview2-evergreen"
+    },
+    {
+      "id": "web-windows-chrome",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "windows-11",
+      "runtime": "chrome"
+    },
+    {
+      "id": "web-windows-edge",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "windows-11",
+      "runtime": "edge"
+    },
+    {
+      "id": "web-windows-firefox",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "windows-11",
+      "runtime": "firefox"
+    },
+    {
+      "id": "web-macos-chrome",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "macos",
+      "runtime": "chrome"
+    },
+    {
+      "id": "web-macos-edge",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "macos",
+      "runtime": "edge"
+    },
+    {
+      "id": "web-macos-firefox",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "macos",
+      "runtime": "firefox"
+    },
+    {
+      "id": "web-macos-safari",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "macos",
+      "runtime": "safari"
+    },
+    {
+      "id": "web-linux-chrome",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "linux",
+      "runtime": "chrome"
+    },
+    {
+      "id": "web-linux-edge",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "linux",
+      "runtime": "edge"
+    },
+    {
+      "id": "web-linux-firefox",
+      "platform": "web",
+      "architecture": "wasm32",
+      "os_requirement": "linux",
+      "runtime": "firefox"
+    }
+  ],
+  "supported": [
+    {
+      "engine": "unity",
+      "engine_line": "2021.3",
+      "minimum_patch": "2021.3.45f2",
+      "maximum_patch": "2021.3.45f2",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "godot",
+      "engine_line": "4.7",
+      "minimum_patch": "4.7.1",
+      "maximum_patch": "4.7.1",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "unity",
+      "engine_line": "2022.3",
+      "minimum_patch": "2022.3.62f1",
+      "maximum_patch": "2022.3.62f1",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "unity",
+      "engine_line": "6000.0",
+      "minimum_patch": "6000.0.80f1",
+      "maximum_patch": "6000.0.80f1",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "unity",
+      "engine_line": "6000.3",
+      "minimum_patch": "6000.3.20f1",
+      "maximum_patch": "6000.3.20f1",
+      "platforms": ["android", "ios", "windows", "web"]
+    }
+  ],
+  "verified": [
+    {
+      "engine": "unity",
+      "engine_version": "2021.3.45f2",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "2021.3.45f2"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "unity",
+      "engine_version": "2022.3.62f1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "2022.3.62f1"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "unity",
+      "engine_version": "6000.0.80f1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "6000.0.80f1"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "unity",
+      "engine_version": "6000.3.20f1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "6000.3.20f1"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "godot",
+      "engine_version": "4.7.1",
+      "platform": "web",
+      "architecture": "wasm32",
+      "toolchain": {"godot_editor": "4.7.1.stable.official.a13da4feb"},
+      "runtime": {"mode": "addon-import-web-export"}
+    }
+  ]
+}

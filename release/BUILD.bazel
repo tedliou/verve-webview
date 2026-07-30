@@ -1,0 +1,33 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+
+exports_files(["README.md"])
+
+py_binary(
+    name = "release_tool",
+    srcs = ["release_tool.py"],
+    main = "release_tool.py",
+    python_version = "PY3",
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "release_tool_test",
+    srcs = [
+        "release_tool.py",
+        "release_tool_test.py",
+    ],
+    data = [
+        "//compatibility:compatibility.json",
+        "//verification:shared-suites.json",
+    ],
+    main = "release_tool_test.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "workflow_policy_test",
+    srcs = ["workflow_policy_test.py"],
+    data = ["//:release_workflows"],
+    main = "workflow_policy_test.py",
+    python_version = "PY3",
+)

@@ -1,0 +1,7 @@
+# This package is replaced in the controlled Linux aggregation lane by
+# build/generate_fragment_repository.py. Empty placeholders keep ordinary
+# development analysis independent of cross-host release artifacts.
+filegroup(name = "android")
+filegroup(name = "ios")
+filegroup(name = "windows")
+filegroup(name = "web")

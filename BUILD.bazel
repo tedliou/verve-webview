@@ -1,0 +1,13 @@
+exports_files([
+    ".github/workflows/release-candidate.yml",
+    ".github/workflows/release-promotion.yml",
+])
+
+filegroup(
+    name = "release_workflows",
+    srcs = [
+        ".github/workflows/release-candidate.yml",
+        ".github/workflows/release-promotion.yml",
+    ],
+    visibility = ["//release:__pkg__"],
+)

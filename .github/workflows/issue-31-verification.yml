@@ -1,0 +1,288 @@
+name: Issue 31 Example Apps and verification matrix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BAZEL_VERSION: 8.7.0
+  GODOT_VERSION: 4.7.1
+  RELEASE_VERSION: 0.0.0-pre.0
+
+jobs:
+  android-web-fragments:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Bazel
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build both engines from the same Android and Web sources
+        run: |
+          for engine in unity godot; do
+            "$RUNNER_TEMP/bazel" build "//packages/webview-${engine}:binding_android" \
+              --//build:release_version="$RELEASE_VERSION" \
+              --platforms=//build/platforms:release_android_arm64
+            "$RUNNER_TEMP/bazel" build "//packages/webview-${engine}:binding_web" \
+              --//build:release_version="$RELEASE_VERSION" \
+              --platforms=//build/platforms:release_web_wasm32
+            for platform in android web; do
+              root="staging/${engine}/${platform}"
+              mkdir -p "$root"
+              cp -R -L \
+                "bazel-bin/packages/webview-${engine}/binding_${platform}.fragment-tree" \
+                "$root/tree"
+              cp \
+                "bazel-bin/packages/webview-${engine}/binding_${platform}.content-manifest.json" \
+                "$root/content-manifest.json"
+              cp \
+                "bazel-bin/packages/webview-${engine}/binding_${platform}.fragment-manifest.json" \
+                "$root/fragment-manifest.json"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-fragments-android-web
+          path: staging
+          if-no-files-found: error
+
+  ios-fragments:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+      - name: Install pinned Bazel
+        run: |
+          if [[ "$(uname -m)" == "arm64" ]]; then architecture=arm64; else architecture=x86_64; fi
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-darwin-${architecture}"
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build both engine iOS fragments
+        run: |
+          for engine in unity godot; do
+            "$RUNNER_TEMP/bazel" build "//packages/webview-${engine}:binding_ios" \
+              --//build:release_version="$RELEASE_VERSION" \
+              --platforms=//build/platforms:release_ios_xcframework
+            root="staging/${engine}/ios"
+            mkdir -p "$root"
+            cp -R -L \
+              "bazel-bin/packages/webview-${engine}/binding_ios.fragment-tree" \
+              "$root/tree"
+            cp \
+              "bazel-bin/packages/webview-${engine}/binding_ios.content-manifest.json" \
+              "$root/content-manifest.json"
+            cp \
+              "bazel-bin/packages/webview-${engine}/binding_ios.fragment-manifest.json" \
+              "$root/fragment-manifest.json"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-fragments-ios
+          path: staging
+          if-no-files-found: error
+
+  windows-fragments:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Bazel
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            "https://github.com/bazelbuild/bazel/releases/download/$env:BAZEL_VERSION/bazel-$env:BAZEL_VERSION-windows-x86_64.exe" `
+            -OutFile "$env:RUNNER_TEMP/bazel.exe"
+      - name: Build both engine Windows fragments
+        shell: pwsh
+        run: |
+          foreach ($engine in @("unity", "godot")) {
+            & "$env:RUNNER_TEMP/bazel.exe" build "//packages/webview-$engine`:binding_windows" `
+              "--//build:release_version=$env:RELEASE_VERSION" `
+              "--platforms=//build/platforms:release_windows_x86_64"
+            $root = "staging/$engine/windows"
+            New-Item -ItemType Directory -Force $root | Out-Null
+            Copy-Item -Recurse -Force `
+              "bazel-bin/packages/webview-$engine/binding_windows.fragment-tree" `
+              "$root/tree"
+            Copy-Item `
+              "bazel-bin/packages/webview-$engine/binding_windows.content-manifest.json" `
+              "$root/content-manifest.json"
+            Copy-Item `
+              "bazel-bin/packages/webview-$engine/binding_windows.fragment-manifest.json" `
+              "$root/fragment-manifest.json"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-fragments-windows
+          path: staging
+          if-no-files-found: error
+
+  candidate:
+    needs: [android-web-fragments, ios-fragments, windows-fragments]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: issue31-fragments-android-web
+          path: release/downloads
+      - uses: actions/download-artifact@v4
+        with:
+          name: issue31-fragments-ios
+          path: release/downloads
+      - uses: actions/download-artifact@v4
+        with:
+          name: issue31-fragments-windows
+          path: release/downloads
+      - name: Generate engine-specific verified fragment repositories
+        run: |
+          for engine in unity godot; do
+            python3 build/generate_fragment_repository.py \
+              --downloads "release/downloads/${engine}" \
+              --output "release/fragments-${engine}"
+          done
+      - name: Install pinned Bazel
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Run shared generated and malformed-distribution suites
+        run: |
+          "$RUNNER_TEMP/bazel" test \
+            //verification:release_evidence_test \
+            //verification:example_apps_test \
+            //verification:contract_matrix_test \
+            //build:distribution_tool_test \
+            //build:generate_fragment_repository_test \
+            //packages/webview-core:lifecycle_test \
+            //packages/webview-core:native_abi_test \
+            //packages/webview-core:contract_rejection_test \
+            //packages/webview-core:contract_snapshot_shape_test \
+            //packages/webview-core:browser_bundle_shape_test \
+            //packages/webview-core:browser_harness_test \
+            //packages/webview-core:browser_consumer_identity_test \
+            //packages/webview-web:web_runtime_test \
+            //packages/webview-godot:binding_metadata_test \
+            --test_env=CHROME_BIN=/usr/bin/google-chrome \
+            --test_output=errors
+      - name: Build and black-box verify both final distributions
+        run: |
+          for engine in unity godot; do
+            common=(
+              "--//build:release_version=$RELEASE_VERSION"
+              "--//build:use_imported_fragments=true"
+              "--platforms=//build/platforms:canonical_aggregation"
+              "--override_repository=+_repo_rules+release_fragments=$PWD/release/fragments-$engine"
+            )
+            "$RUNNER_TEMP/bazel" test \
+              "//packages/webview-${engine}:sdk_distribution_test" \
+              "//examples:${engine}_example_distribution_test" \
+              "${common[@]}" \
+              --test_output=errors
+            "$RUNNER_TEMP/bazel" build "//packages/webview-${engine}:sdk" \
+              "${common[@]}" \
+              --output_groups=default,package_tree,content_manifest,compatibility,provenance
+          done
+      - name: Stage one immutable Release Candidate
+        run: |
+          mkdir -p release/final
+          cp bazel-bin/packages/webview-unity/_sdk_tgz.tgz \
+            "release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz"
+          cp bazel-bin/packages/webview-unity/_sdk_zip.zip \
+            "release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.zip"
+          cp bazel-bin/packages/webview-godot/_sdk_zip.zip \
+            "release/final/verve-webview-godot-${RELEASE_VERSION}.zip"
+          (cd release/final && sha256sum *.tgz *.zip > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-release-candidate
+          path: release/final
+          if-no-files-found: error
+
+  godot-web-example:
+    needs: candidate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: issue31-release-candidate
+          path: release/final
+      - name: Install exact official Godot editor and templates
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/godot.zip" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          chmod +x "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          curl --fail --location --output "$RUNNER_TEMP/templates.tpz" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -q "$RUNNER_TEMP/templates.tpz" -d "$RUNNER_TEMP/templates"
+          cp "$RUNNER_TEMP/templates/templates/"* \
+            "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+      - name: Install only the final Godot SDK and export the Example App
+        run: |
+          mkdir -p verification/project/Build/Web
+          cp -R examples/godot/. verification/project/
+          unzip -q "release/final/verve-webview-godot-${RELEASE_VERSION}.zip" \
+            -d verification/project
+          godot="$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          test "$("$godot" --version)" = "4.7.1.stable.official.a13da4feb"
+          "$godot" --headless --path verification/project \
+            --log-file "$PWD/verification/godot-import.log" --editor --quit
+          "$godot" --headless --path verification/project \
+            --log-file "$PWD/verification/godot-export.log" \
+            --export-release Web "$PWD/verification/project/Build/Web/index.html"
+          ! grep -E 'ERROR:|WARNING:' \
+            verification/godot-import.log verification/godot-export.log
+          grep -q '<!-- VERVE_WEBVIEW_CORE -->' \
+            verification/project/Build/Web/index.html
+          for payload in api-contract.js verve_webview_core.js \
+            verve_webview_core_bg.wasm verve_webview_core_facade.js \
+            verve_webview_web_backend.js; do
+            cmp "verification/project/addons/verve_webview/bin/web/$payload" \
+              "verification/project/Build/Web/VerveWebViewCore/$payload"
+          done
+      - name: Emit digest-bound fail-closed Release Evidence
+        run: |
+          python3 verification/release_evidence.py record \
+            --output verification/godot-web-evidence.json \
+            --compatibility compatibility/compatibility.json \
+            --suites verification/shared-suites.json \
+            --engine godot \
+            --engine-version 4.7.1 \
+            --profile web-linux-chrome \
+            --platform web \
+            --architecture wasm32 \
+            --os ubuntu-24.04 \
+            --toolchain godot_editor=4.7.1.stable.official.a13da4feb \
+            --runtime name=chrome \
+            --runtime version=unverified \
+            --result malformed_distribution=passed \
+            --result smoke=passed \
+            --artifact "unity.tgz=release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz" \
+            --artifact "unity.zip=release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.zip" \
+            --artifact "godot.zip=release/final/verve-webview-godot-${RELEASE_VERSION}.zip"
+          if python3 verification/release_evidence.py verify \
+            --evidence verification/godot-web-evidence.json \
+            --compatibility compatibility/compatibility.json \
+            --suites verification/shared-suites.json \
+            --artifact "unity.tgz=release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz" \
+            --artifact "unity.zip=release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.zip" \
+            --artifact "godot.zip=release/final/verve-webview-godot-${RELEASE_VERSION}.zip"; then
+            echo "unverified browser/runtime suites must not pass" >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue31-godot-web-observation
+          path: |
+            verification/godot-web-evidence.json
+            verification/godot-import.log
+            verification/godot-export.log
+            verification/project/Build/Web
+          if-no-files-found: error

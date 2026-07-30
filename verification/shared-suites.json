@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "suite_version": "1.0.0",
+  "required_suites": [
+    "conformance",
+    "security",
+    "smoke",
+    "lifecycle_stress",
+    "host_loss",
+    "surface_lease",
+    "malformed_distribution"
+  ],
+  "scenarios": [
+    {
+      "id": "four-operation-contract",
+      "suite": "conformance",
+      "steps": [
+        "initialize:ok",
+        "open:ok",
+        "open:ok:reuse_surface",
+        "close:ok",
+        "open:ok:fresh_surface",
+        "dispose:ok",
+        "open:disposed"
+      ]
+    },
+    {
+      "id": "untrusted-page-negative-smoke",
+      "suite": "security",
+      "steps": [
+        "open:https:ok",
+        "navigate:javascript:cancel",
+        "permission:camera:deny",
+        "popup:cancel",
+        "native_bridge:absent",
+        "mixed_content:block"
+      ]
+    },
+    {
+      "id": "final-distribution-black-box",
+      "suite": "smoke",
+      "steps": [
+        "initialize:ok",
+        "open:https:ok",
+        "rectangle:update",
+        "open:navigate_reuse",
+        "close:ok",
+        "open:reopen",
+        "dispose:ok"
+      ]
+    },
+    {
+      "id": "bounded-lifecycle-stress",
+      "suite": "lifecycle_stress",
+      "iterations": 100,
+      "steps": [
+        "initialize",
+        "open",
+        "rectangle:update",
+        "close",
+        "open:reopen",
+        "dispose",
+        "assert:no_hang_no_leak"
+      ]
+    },
+    {
+      "id": "host-generation-loss",
+      "suite": "host_loss",
+      "steps": [
+        "initialize:ok",
+        "open:pending",
+        "host:invalidate",
+        "open:host_lost",
+        "assert:completion_exactly_once"
+      ]
+    },
+    {
+      "id": "application-surface-exclusion",
+      "suite": "surface_lease",
+      "steps": [
+        "instance_a:open:ok",
+        "instance_b:open:surface_in_use",
+        "instance_a:close:ok",
+        "instance_b:open:ok",
+        "assert:single_surface"
+      ]
+    },
+    {
+      "id": "tampered-final-archive",
+      "suite": "malformed_distribution",
+      "steps": [
+        "alter:payload_byte",
+        "verify:content_manifest",
+        "initialize:distribution_invalid",
+        "assert:no_backend_work"
+      ]
+    }
+  ]
+}

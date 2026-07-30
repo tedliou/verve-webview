@@ -1,0 +1,19 @@
+package_group(
+    name = "core_consumers",
+    packages = [
+        "//packages/webview-android",
+        "//packages/webview-godot",
+        "//packages/webview-ios",
+        "//packages/webview-unity",
+        "//packages/webview-web",
+        "//packages/webview-windows",
+    ],
+)
+
+package_group(
+    name = "backend_consumers",
+    packages = [
+        "//packages/webview-godot",
+        "//packages/webview-unity",
+    ],
+)

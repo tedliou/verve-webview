@@ -1,0 +1,83 @@
+load("@rules_apple//apple:ios.bzl", "ios_application", "ios_unit_test")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("//build:module_rules.bzl", "platform_backend_payload_manifest")
+load("//packages/webview-ios:build/ios_backend.bzl", "ios_backend")
+
+cc_library(
+    name = "_backend_runtime",
+    srcs = ["src/runtime/ios_backend_runtime.cc"],
+    hdrs = ["src/runtime/ios_backend_runtime.h"],
+    copts = ["-std=c++17"],
+    visibility = ["//visibility:private"],
+)
+
+ios_backend(
+    name = "backend",
+    core = "//packages/webview-core:core_native",
+    hdrs = ["src/objc/VerveWebViewIOS.h"],
+    objc_srcs = ["src/objc/VerveWebViewIOS.mm"],
+    runtime_deps = [":_backend_runtime"],
+    runtime_metadata = "src/runtime-metadata.json",
+    visibility = ["//build/visibility:backend_consumers"],
+)
+
+cc_test(
+    name = "backend_unit_test",
+    srcs = ["tests/unit/ios_backend_runtime_test.cc"],
+    copts = ["-std=c++17"],
+    deps = [":_backend_runtime"],
+)
+
+objc_library(
+    name = "_backend_device_test_lib",
+    srcs = ["tests/device/IOSBackendDeviceTests.m"],
+    copts = ["-fobjc-arc"],
+    sdk_frameworks = [
+        "WebKit",
+        "XCTest",
+    ],
+    deps = [":_backend_objc"],
+)
+
+objc_library(
+    name = "_backend_device_test_host_lib",
+    srcs = ["tests/device/HostApp.m"],
+    copts = ["-fobjc-arc"],
+)
+
+ios_application(
+    name = "_backend_device_test_host",
+    bundle_id = "com.tedliou.verve.webview.backend-tests",
+    families = [
+        "iphone",
+        "ipad",
+    ],
+    infoplists = ["tests/device/HostInfo.plist"],
+    minimum_os_version = "13.0",
+    deps = [":_backend_device_test_host_lib"],
+)
+
+ios_unit_test(
+    name = "backend_device_test",
+    families = [
+        "iphone",
+        "ipad",
+    ],
+    minimum_os_version = "13.0",
+    runner = "@rules_apple//apple/testing/default_runner:ios_xctestrun_ordered_runner",
+    test_host = ":_backend_device_test_host",
+    deps = [":_backend_device_test_lib"],
+)
+
+platform_backend_payload_manifest(
+    name = "_backend_payload_manifest",
+    backend = ":backend",
+)
+
+sh_test(
+    name = "backend_contract",
+    srcs = ["tests/backend_contract_test.sh"],
+    args = ["$(locations :_backend_payload_manifest)"],
+    data = [":_backend_payload_manifest"],
+)

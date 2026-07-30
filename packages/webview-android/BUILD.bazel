@@ -1,0 +1,70 @@
+load("@rules_android//rules:rules.bzl", "android_binary")
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+load("//build:module_rules.bzl", "platform_backend_payload_manifest")
+load("//packages/webview-android:build/android_backend.bzl", "android_backend")
+
+android_backend(
+    name = "backend",
+    core = "//packages/webview-core:core_native",
+    java_srcs = glob(["src/main/java/**/*.java"]),
+    manifest = "src/main/AndroidManifest.xml",
+    runtime_metadata = "src/runtime-metadata.json",
+    visibility = ["//build/visibility:backend_consumers"],
+)
+
+java_library(
+    name = "_backend_runtime_for_test",
+    srcs = [
+        "src/main/java/com/tedliou/verve/webview/AndroidBackendRuntime.java",
+        "src/main/java/com/tedliou/verve/webview/UrlPolicy.java",
+    ],
+    javacopts = [
+        "--release",
+        "11",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+java_test(
+    name = "backend_unit_test",
+    srcs = glob(["tests/unit/**/*.java"]),
+    javacopts = [
+        "--release",
+        "11",
+    ],
+    main_class = "com.tedliou.verve.webview.AndroidPlatformBackendTest",
+    use_testrunner = False,
+    deps = [":_backend_runtime_for_test"],
+)
+
+platform_backend_payload_manifest(
+    name = "_backend_payload_manifest",
+    backend = ":backend",
+)
+
+sh_test(
+    name = "backend_contract",
+    srcs = ["tests/backend_contract_test.sh"],
+    args = ["$(locations :_backend_payload_manifest)"],
+    data = [":_backend_payload_manifest"],
+)
+
+android_binary(
+    name = "_instrumented_host",
+    srcs = ["tests/instrumented/com/tedliou/verve/webview/BackendTestActivity.java"],
+    custom_package = "com.tedliou.verve.webview.testhost",
+    manifest = "tests/instrumented/host-AndroidManifest.xml",
+)
+
+android_binary(
+    name = "backend_instrumented_test",
+    # Compile the backend into the instrumentation APK itself. This keeps the
+    # test APK self-contained and exercises the same sources packaged in the
+    # canonical AAR.
+    srcs = glob(["src/main/java/**/*.java"]) + [
+        "tests/instrumented/com/tedliou/verve/webview/BackendInstrumentation.java",
+    ],
+    custom_package = "com.tedliou.verve.webview.test",
+    instruments = ":_instrumented_host",
+    manifest = "tests/instrumented/test-AndroidManifest.xml",
+)

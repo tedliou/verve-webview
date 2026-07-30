@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.tedliou.verve.webview.testhost">
+  <uses-sdk android:minSdkVersion="24" />
+  <application android:theme="@android:style/Theme.Material.Light.NoActionBar">
+    <activity
+        android:name="com.tedliou.verve.webview.BackendTestActivity"
+        android:exported="true" />
+  </application>
+</manifest>

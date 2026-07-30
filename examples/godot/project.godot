@@ -1,0 +1,12 @@
+[application]
+
+config/name="Verve WebView Example"
+run/main_scene="res://main.tscn"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/verve_webview/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"

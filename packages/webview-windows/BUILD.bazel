@@ -1,0 +1,46 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//build:module_rules.bzl", "platform_backend_payload_manifest")
+load("//packages/webview-windows:build/windows_backend.bzl", "windows_backend")
+
+cc_library(
+    name = "_backend_runtime",
+    srcs = ["src/runtime/windows_backend_runtime.cc"],
+    hdrs = ["src/runtime/windows_backend_runtime.h"],
+    copts = select({
+        "@platforms//os:windows": ["/std:c++17"],
+        "//conditions:default": ["-std=c++17"],
+    }),
+    visibility = ["//visibility:private"],
+)
+
+windows_backend(
+    name = "backend",
+    core = "//packages/webview-core:core_native",
+    runtime_deps = [":_backend_runtime"],
+    runtime_metadata = "src/runtime-metadata.json",
+    visibility = ["//build/visibility:backend_consumers"],
+)
+
+cc_test(
+    name = "backend_unit_test",
+    srcs = ["tests/unit/windows_backend_runtime_test.cc"],
+    copts = select({
+        "@platforms//os:windows": ["/std:c++17"],
+        "//conditions:default": ["-std=c++17"],
+    }),
+    deps = [":_backend_runtime"],
+)
+
+platform_backend_payload_manifest(
+    name = "_backend_payload_manifest",
+    backend = ":backend",
+)
+
+cc_test(
+    name = "backend_contract",
+    srcs = ["tests/backend_contract_test.cc"],
+    args = [
+        "$(rootpaths :_backend_payload_manifest)",
+    ],
+    data = [":_backend_payload_manifest"],
+)
