@@ -43,6 +43,18 @@ def ios_backend(
         public_hdrs = hdrs,
         visibility = ["//visibility:private"],
     )
+    release_payload = "_" + name + "_release_xcframework_payload"
+    debug_payload = "_" + name + "_debug_xcframework_payload"
+    native.filegroup(
+        name = release_payload,
+        srcs = [":" + xcframework_name],
+        visibility = ["//visibility:private"],
+    )
+    native.filegroup(
+        name = debug_payload,
+        srcs = [":" + xcframework_name],
+        visibility = ["//visibility:private"],
+    )
     platform_backend(
         name = name,
         core = core,
@@ -51,8 +63,8 @@ def ios_backend(
             "debug/ios/VerveWebViewIOS.xcframework.zip",
         ],
         payloads = [
-            ":" + xcframework_name,
-            ":" + xcframework_name,
+            ":" + release_payload,
+            ":" + debug_payload,
         ],
         platform = "ios",
         required_transport = "native",
