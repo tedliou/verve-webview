@@ -56,6 +56,19 @@ class ExampleAppsTest(unittest.TestCase):
             self.assertIn(behavior, unity.lower())
             self.assertIn(behavior, godot.lower())
 
+    def test_hosted_candidate_overrides_the_canonical_fragment_repository(self) -> None:
+        workflow = (
+            ROOT / ".github/workflows/issue-31-verification.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "--override_repository=+_repo_rules+release_fragments=",
+            workflow,
+        )
+        self.assertNotIn(
+            "--override_repository=release_fragments=",
+            workflow,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

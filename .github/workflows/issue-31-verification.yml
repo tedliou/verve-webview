@@ -179,7 +179,7 @@ jobs:
               "--//build:release_version=$RELEASE_VERSION"
               "--//build:use_imported_fragments=true"
               "--platforms=//build/platforms:canonical_aggregation"
-              "--override_repository=release_fragments=$PWD/release/fragments-$engine"
+              "--override_repository=+_repo_rules+release_fragments=$PWD/release/fragments-$engine"
             )
             "$RUNNER_TEMP/bazel" test \
               "//packages/webview-${engine}:sdk_distribution_test" \
