@@ -467,7 +467,10 @@ def _fragment_merge_impl(ctx):
             fail("%s must resolve to exactly one transitioned fragment" % name)
         transitioned.append(configured_targets[0][DistributionFragmentInfo])
 
-    fragments = [ctx.attr.adapter[DistributionFragmentInfo]] + transitioned
+    fragments = [ctx.attr.adapter[DistributionFragmentInfo]]
+    if ctx.attr.support:
+        fragments.append(ctx.attr.support[DistributionFragmentInfo])
+    fragments.extend(transitioned)
     compatibility = fragments[0].compatibility
     destinations = {}
     provenance = []
@@ -561,6 +564,7 @@ _fragment_merge = rule(
             mandatory = True,
             providers = [DistributionFragmentInfo],
         ),
+        "support": attr.label(providers = [DistributionFragmentInfo]),
         "android": attr.label(
             mandatory = True,
             providers = [DistributionFragmentInfo],
@@ -670,12 +674,14 @@ def engine_sdk_distribution(
         web,
         release_version,
         visibility,
+        support = None,
         target_compatible_with = []):
     merge_name = "_" + name + "_merge"
     _fragment_merge(
         name = merge_name,
         engine = engine,
         adapter = adapter,
+        support = support,
         android = android,
         ios = ios,
         windows = windows,

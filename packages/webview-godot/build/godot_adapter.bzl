@@ -74,7 +74,6 @@ def godot_adapter(
         api_contract,
         compatibility,
         entries,
-        editor_gdextension_srcs,
         plugin_config_template,
         visibility):
     plugin_config_name = "_" + name + "_plugin_config"
@@ -85,21 +84,6 @@ def godot_adapter(
     )
     all_entries = dict(entries)
     all_entries[":" + plugin_config_name] = "addons/verve_webview/plugin.cfg"
-    editor_library_name = "_" + name + "_godot_editor_gdextension"
-    cc_binary(
-        name = editor_library_name,
-        srcs = editor_gdextension_srcs,
-        linkshared = True,
-        target_compatible_with = [
-            "@platforms//cpu:x86_64",
-            "@platforms//os:linux",
-        ],
-        visibility = ["//visibility:private"],
-    )
-    all_entries[":" + editor_library_name] = (
-        "addons/verve_webview/bin/windows/editor/linux/x86_64/" +
-        "libverve_webview_godot_editor.so"
-    )
     distribution_fragment(
         name = name,
         api_contract = api_contract,
@@ -108,6 +92,35 @@ def godot_adapter(
         compatibility = compatibility,
         entries = all_entries,
         platform = "engine",
+        visibility = visibility,
+    )
+
+def godot_editor_support(
+        name,
+        compatibility,
+        gdextension_srcs,
+        visibility):
+    editor_library_name = "_" + name + "_gdextension"
+    cc_binary(
+        name = editor_library_name,
+        srcs = gdextension_srcs,
+        linkshared = True,
+        target_compatible_with = [
+            "@platforms//cpu:x86_64",
+            "@platforms//os:linux",
+        ],
+        visibility = ["//visibility:private"],
+    )
+    all_entries = {}
+    all_entries[":" + editor_library_name] = (
+        "addons/verve_webview/bin/windows/editor/linux/x86_64/" +
+        "libverve_webview_godot_editor.so"
+    )
+    distribution_fragment(
+        name = name,
+        compatibility = compatibility,
+        entries = all_entries,
+        platform = "editor",
         visibility = visibility,
     )
 

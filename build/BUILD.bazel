@@ -30,7 +30,10 @@ py_binary(
     srcs = ["distribution_tool.py"],
     main = "distribution_tool.py",
     python_version = "PY3",
-    visibility = ["//visibility:private"],
+    visibility = [
+        "//build:__pkg__",
+        "//packages/webview-godot:__pkg__",
+    ],
 )
 
 py_test(

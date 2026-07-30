@@ -1,5 +1,5 @@
 load("//build:module_rules.bzl", "engine_sdk_distribution")
-load("//packages/webview-godot:build/godot_adapter.bzl", "godot_adapter", "godot_binding")
+load("//packages/webview-godot:build/godot_adapter.bzl", "godot_adapter", "godot_binding", "godot_editor_support")
 load("@rules_python//python:defs.bzl", "py_test")
 
 godot_adapter(
@@ -15,10 +15,16 @@ godot_adapter(
         "src/adapter/webview.gd": "addons/verve_webview/webview.gd",
         "src/adapter/webview_options.gd": "addons/verve_webview/webview_options.gd",
     },
-    editor_gdextension_srcs = [
+    plugin_config_template = "distribution/addons/verve_webview/plugin.cfg",
+    visibility = ["//visibility:private"],
+)
+
+godot_editor_support(
+    name = "editor_support",
+    compatibility = "//compatibility:compatibility.json",
+    gdextension_srcs = [
         "src/bindings/windows/gdextension_entry.c",
     ],
-    plugin_config_template = "distribution/addons/verve_webview/plugin.cfg",
     visibility = ["//visibility:private"],
 )
 
@@ -100,6 +106,7 @@ engine_sdk_distribution(
     name = "sdk",
     engine = "godot",
     adapter = ":adapter",
+    support = ":editor_support",
     android = select({
         "//build:imported_fragments": "@release_fragments//:android",
         "//conditions:default": ":binding_android",
