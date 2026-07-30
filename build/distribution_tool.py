@@ -98,14 +98,25 @@ def merge(arguments):
         raise SystemExit("compatibility sdk_version differs from release_version")
 
     destinations = {destination.casefold(): destination for destination, _ in entries}
-    if "compatibility.json" in destinations:
-        raise SystemExit("fragment must not install compatibility.json")
-    entries.append(("compatibility.json", compatibility))
+    metadata_root = "" if arguments.engine == "unity" else "addons/verve_webview/"
+    compatibility_destination = metadata_root + "compatibility.json"
+    manifest_destination = metadata_root + "content-manifest.json"
+    for destination in (compatibility_destination, manifest_destination):
+        if destination.casefold() in destinations:
+            raise SystemExit("fragment must not install " + destination)
+    entries.append((compatibility_destination, compatibility))
 
-    package_json = next(source for destination, source in entries if destination == "package.json")
-    package_data = json.loads(package_json.read_text(encoding="utf-8"))
-    if package_data["version"] != arguments.release_version:
-        raise SystemExit("package.json version differs from release_version")
+    if arguments.engine == "unity":
+        try:
+            package_json = next(
+                source for destination, source in entries
+                if destination == "package.json"
+            )
+        except StopIteration:
+            raise SystemExit("Unity distribution requires package.json") from None
+        package_data = json.loads(package_json.read_text(encoding="utf-8"))
+        if package_data["version"] != arguments.release_version:
+            raise SystemExit("package.json version differs from release_version")
 
     tree = pathlib.Path(arguments.tree)
     tree.mkdir(parents=True, exist_ok=True)
@@ -116,7 +127,9 @@ def merge(arguments):
 
     manifest = {"entries": manifest_entries(entries), "schema_version": 1}
     write_json(arguments.manifest, manifest)
-    shutil.copyfile(arguments.manifest, tree / "content-manifest.json")
+    installed_manifest = tree / manifest_destination
+    installed_manifest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(arguments.manifest, installed_manifest)
 
 
 def parser():
@@ -146,6 +159,7 @@ def parser():
     verify_parser.set_defaults(handler=verify)
 
     merge_parser = commands.add_parser("merge")
+    merge_parser.add_argument("--engine", choices=["unity", "godot"], required=True)
     merge_parser.add_argument("--spec", required=True)
     merge_parser.add_argument("--tree", required=True)
     merge_parser.add_argument("--manifest", required=True)

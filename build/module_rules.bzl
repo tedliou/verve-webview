@@ -498,6 +498,8 @@ def _fragment_merge_impl(ctx):
         executable = ctx.executable._distribution_tool,
         arguments = [
             "merge",
+            "--engine",
+            ctx.attr.engine,
             "--spec",
             spec.path,
             "--tree",
@@ -517,8 +519,9 @@ def _fragment_merge_impl(ctx):
         mnemonic = "EngineSdkPackageTree",
     )
     package_destinations = dict(destinations)
-    package_destinations["compatibility.json"] = compatibility
-    package_destinations["content-manifest.json"] = manifest
+    metadata_root = "" if ctx.attr.engine == "unity" else "addons/verve_webview/"
+    package_destinations[metadata_root + "compatibility.json"] = compatibility
+    package_destinations[metadata_root + "content-manifest.json"] = manifest
     return [
         DefaultInfo(files = depset(
             direct = [tree, manifest, compatibility],
@@ -531,6 +534,7 @@ def _fragment_merge_impl(ctx):
         OutputGroupInfo(
             package_tree = depset([tree]),
             content_manifest = depset([manifest]),
+            compatibility = depset([compatibility]),
             provenance = depset(provenance),
         ),
     ]
@@ -595,9 +599,12 @@ _fragment_merge = rule(
 def _sdk_outputs_impl(ctx):
     merge = ctx.attr.merge
     output_groups = merge[OutputGroupInfo]
+    archives = [ctx.file.zip]
+    if ctx.attr.engine == "unity":
+        archives.append(ctx.file.tgz)
     return [
         DefaultInfo(files = depset(
-            direct = [ctx.file.tgz, ctx.file.zip],
+            direct = archives,
             transitive = [
                 output_groups.package_tree,
                 output_groups.content_manifest,
@@ -606,6 +613,7 @@ def _sdk_outputs_impl(ctx):
         OutputGroupInfo(
             package_tree = output_groups.package_tree,
             content_manifest = output_groups.content_manifest,
+            compatibility = output_groups.compatibility,
             provenance = output_groups.provenance,
         ),
     ]
@@ -613,6 +621,7 @@ def _sdk_outputs_impl(ctx):
 _sdk_outputs = rule(
     implementation = _sdk_outputs_impl,
     attrs = {
+        "engine": attr.string(mandatory = True, values = ["unity", "godot"]),
         "merge": attr.label(mandatory = True),
         "tgz": attr.label(mandatory = True, allow_single_file = [".tgz"]),
         "zip": attr.label(mandatory = True, allow_single_file = [".zip"]),
@@ -662,7 +671,7 @@ def engine_sdk_distribution(
     pkg_zip(
         name = zip_name,
         srcs = [":" + merge_name],
-        package_dir = "com.tedliou.verve-webview",
+        package_dir = "com.tedliou.verve-webview" if engine == "unity" else "",
         mode = "0644",
         timestamp = 315532800,
         stamp = 0,
@@ -672,6 +681,7 @@ def engine_sdk_distribution(
     )
     _sdk_outputs(
         name = name,
+        engine = engine,
         merge = ":" + merge_name,
         tgz = ":" + tgz_name,
         zip = ":" + zip_name,

@@ -10,6 +10,13 @@
       "platforms": ["android", "ios", "windows", "web"]
     },
     {
+      "engine": "godot",
+      "engine_line": "4.7",
+      "minimum_patch": "4.7.1",
+      "maximum_patch": "4.7.1",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
       "engine": "unity",
       "engine_line": "2022.3",
       "minimum_patch": "2022.3.62f1",
@@ -63,6 +70,14 @@
       "architecture": "x86_64",
       "toolchain": {"unity_editor": "6000.3.20f1"},
       "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "godot",
+      "engine_version": "4.7.1",
+      "platform": "web",
+      "architecture": "wasm32",
+      "toolchain": {"godot_editor": "4.7.1.stable.official.a13da4feb"},
+      "runtime": {"mode": "addon-import-web-export"}
     }
   ]
 }

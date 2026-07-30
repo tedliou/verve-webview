@@ -48,8 +48,12 @@ def ios_backend(
         core = core,
         payload_keys = [
             "release/ios/VerveWebViewIOS.xcframework.zip",
+            "debug/ios/VerveWebViewIOS.xcframework.zip",
         ],
-        payloads = [":" + xcframework_name],
+        payloads = [
+            ":" + xcframework_name,
+            ":" + xcframework_name,
+        ],
         platform = "ios",
         required_transport = "native",
         runtime_metadata = runtime_metadata,

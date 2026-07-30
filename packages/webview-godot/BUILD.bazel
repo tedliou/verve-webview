@@ -1,11 +1,13 @@
 load("//build:module_rules.bzl", "engine_sdk_distribution")
 load("//packages/webview-godot:build/godot_adapter.bzl", "godot_adapter", "godot_binding")
+load("@rules_python//python:defs.bzl", "py_test")
 
 godot_adapter(
     name = "adapter",
     api_contract = "//packages/webview-core:api_contract",
     compatibility = "//compatibility:compatibility.json",
     entries = {
+        "distribution/addons/verve_webview/plugin.gd": "addons/verve_webview/plugin.gd",
         "src/adapter/diagnostic_detail.gd": "addons/verve_webview/diagnostic_detail.gd",
         "src/adapter/geometry_converter.gd": "addons/verve_webview/geometry_converter.gd",
         "src/adapter/godot_binding_registry.gd": "addons/verve_webview/godot_binding_registry.gd",
@@ -13,6 +15,7 @@ godot_adapter(
         "src/adapter/webview.gd": "addons/verve_webview/webview.gd",
         "src/adapter/webview_options.gd": "addons/verve_webview/webview_options.gd",
     },
+    plugin_config_template = "distribution/addons/verve_webview/plugin.cfg",
     visibility = ["//visibility:private"],
 )
 
@@ -20,7 +23,17 @@ godot_binding(
     name = "binding_android",
     adapter = ":adapter",
     backend = "//packages/webview-android:backend",
+    backend_entries = {
+        "release/arm64-v8a/verve-webview.aar": "addons/verve_webview/bin/android/verve-webview-backend.aar",
+    },
+    android_compile_stubs = glob(["src/bindings/android/compile_stubs/**/*.java"]),
+    android_manifest = "src/bindings/android/AndroidManifest.xml",
+    android_plugin_srcs = glob(["src/bindings/android/java/**/*.java"]),
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "src/bindings/android/android_export_plugin.gd": "addons/verve_webview/export/android_export_plugin.gd",
+    },
+    architecture = "arm64-v8a",
     platform = "android",
     visibility = ["//visibility:private"],
 )
@@ -29,7 +42,15 @@ godot_binding(
     name = "binding_ios",
     adapter = ":adapter",
     backend = "//packages/webview-ios:backend",
+    backend_entries = {
+        "debug/ios/VerveWebViewIOS.xcframework.zip": "ios/plugins/verve_webview/VerveWebViewIOS.debug.xcframework.zip",
+        "release/ios/VerveWebViewIOS.xcframework.zip": "ios/plugins/verve_webview/VerveWebViewIOS.release.xcframework.zip",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "src/bindings/ios/verve_webview.gdip": "ios/plugins/verve_webview/verve_webview.gdip",
+    },
+    architecture = "device-arm64_simulator-arm64-x86_64",
     platform = "ios",
     visibility = ["//visibility:private"],
 )
@@ -38,7 +59,14 @@ godot_binding(
     name = "binding_windows",
     adapter = ":adapter",
     backend = "//packages/webview-windows:backend",
+    backend_entries = {
+        "release/windows/x86_64/verve_webview_windows.dll": "addons/verve_webview/bin/windows/x86_64/verve_webview_windows.dll",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "src/bindings/windows/verve_webview.gdextension": "addons/verve_webview/bin/windows/verve_webview.gdextension",
+    },
+    architecture = "x86_64",
     platform = "windows",
     visibility = ["//visibility:private"],
 )
@@ -47,7 +75,21 @@ godot_binding(
     name = "binding_web",
     adapter = ":adapter",
     backend = "//packages/webview-web:backend",
+    backend_entries = {
+        "backend_runtime": "addons/verve_webview/bin/web/verve_webview_web_backend.js",
+    },
+    backend_file_entries = {
+        "web|api-contract.js": "addons/verve_webview/bin/web/api-contract.js",
+        "web|verve_webview_core.js": "addons/verve_webview/bin/web/verve_webview_core.js",
+        "web|verve_webview_core_bg.wasm": "addons/verve_webview/bin/web/verve_webview_core_bg.wasm",
+        "web|verve_webview_core_facade.js": "addons/verve_webview/bin/web/verve_webview_core_facade.js",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "src/bindings/web/web_bridge.gd": "addons/verve_webview/web_bridge.gd",
+        "src/bindings/web/web_export_plugin.gd": "addons/verve_webview/export/web_export_plugin.gd",
+    },
+    architecture = "wasm32",
     platform = "web",
     visibility = ["//packages/webview-core:__pkg__"],
 )
@@ -56,10 +98,22 @@ engine_sdk_distribution(
     name = "sdk",
     engine = "godot",
     adapter = ":adapter",
-    android = ":binding_android",
-    ios = ":binding_ios",
-    windows = ":binding_windows",
-    web = ":binding_web",
+    android = select({
+        "//build:imported_fragments": "@release_fragments//:android",
+        "//conditions:default": ":binding_android",
+    }),
+    ios = select({
+        "//build:imported_fragments": "@release_fragments//:ios",
+        "//conditions:default": ":binding_ios",
+    }),
+    windows = select({
+        "//build:imported_fragments": "@release_fragments//:windows",
+        "//conditions:default": ":binding_windows",
+    }),
+    web = select({
+        "//build:imported_fragments": "@release_fragments//:web",
+        "//conditions:default": ":binding_web",
+    }),
     release_version = "//build:release_version",
     target_compatible_with = ["//build/platforms:canonical_aggregation_capability"],
     visibility = ["//visibility:public"],
@@ -79,4 +133,29 @@ sh_test(
         "manual",
         "no-sandbox",
     ],
+)
+
+py_test(
+    name = "binding_metadata_test",
+    srcs = ["tests/binding_metadata_test.py"],
+    data = [
+        "BUILD.bazel",
+        "src/bindings/android/AndroidManifest.xml",
+        "src/bindings/android/android_export_plugin.gd",
+        "src/bindings/ios/verve_webview.gdip",
+        "src/bindings/web/web_export_plugin.gd",
+        "src/bindings/windows/verve_webview.gdextension",
+    ],
+    main = "tests/binding_metadata_test.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "sdk_distribution_test",
+    srcs = ["tests/sdk_distribution_test.py"],
+    args = ["$(locations :sdk)"],
+    data = [":sdk"],
+    main = "tests/sdk_distribution_test.py",
+    python_version = "PY3",
+    tags = ["manual"],
 )

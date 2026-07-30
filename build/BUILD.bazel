@@ -34,6 +34,16 @@ py_binary(
 )
 
 py_test(
+    name = "distribution_tool_test",
+    srcs = [
+        "distribution_tool.py",
+        "distribution_tool_test.py",
+    ],
+    main = "distribution_tool_test.py",
+    python_version = "PY3",
+)
+
+py_test(
     name = "generate_fragment_repository_test",
     srcs = ["generate_fragment_repository_test.py"],
     data = ["generate_fragment_repository.py"],

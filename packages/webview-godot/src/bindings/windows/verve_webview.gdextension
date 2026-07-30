@@ -1,0 +1,9 @@
+[configuration]
+
+entry_symbol = "verve_webview_library_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+
+windows.release.x86_64 = "res://addons/verve_webview/bin/windows/x86_64/verve_webview_windows.dll"

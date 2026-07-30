@@ -1,0 +1,15 @@
+[config]
+
+name="VerveWebView"
+binary="VerveWebViewIOS.xcframework"
+initialization="verve_webview_ios_initialize"
+deinitialization="verve_webview_ios_deinitialize"
+
+[dependencies]
+
+linked=[]
+embedded=[]
+system=["Foundation.framework", "Security.framework", "UIKit.framework", "WebKit.framework"]
+capabilities=[]
+files=[]
+linker_flags=["-ObjC"]
