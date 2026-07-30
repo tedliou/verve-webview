@@ -521,7 +521,7 @@ def _fragment_merge_impl(ctx):
     package_destinations["content-manifest.json"] = manifest
     return [
         DefaultInfo(files = depset(
-            direct = [tree, manifest],
+            direct = [tree, manifest, compatibility],
             transitive = [depset(destinations.values())],
         )),
         PackageFilesInfo(
