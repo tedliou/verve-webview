@@ -14,6 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 TOOL = ROOT / "verification" / "release_evidence.py"
 COMPATIBILITY = ROOT / "compatibility" / "compatibility.json"
 SUITES = ROOT / "verification" / "shared-suites.json"
+SOURCE_SHA = "a" * 40
 
 
 def sha256(path: pathlib.Path) -> str:
@@ -80,8 +81,57 @@ class ReleaseEvidenceTest(unittest.TestCase):
         path.write_text(json.dumps(evidence), encoding="utf-8")
         return path
 
-    def verify_arguments(self, evidence: pathlib.Path) -> list[str]:
-        return [
+    def write_candidate(self) -> pathlib.Path:
+        compatibility_digest = sha256(COMPATIBILITY)
+        identity = {
+            "version": json.loads(COMPATIBILITY.read_text(encoding="utf-8"))[
+                "sdk_version"
+            ],
+            "channel": "prerelease",
+            "source_sha": SOURCE_SHA,
+            "compatibility_sha256": compatibility_digest,
+            "artifact_sha256": {
+                artifact_id: sha256(path)
+                for artifact_id, path in sorted(self.artifacts.items())
+            },
+        }
+        candidate = {
+            "schema_version": 1,
+            "candidate_id": hashlib.sha256(
+                json.dumps(
+                    identity,
+                    ensure_ascii=True,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest(),
+            "identity": identity,
+            "artifacts": [
+                {
+                    "id": artifact_id,
+                    "name": path.name,
+                    "sha256": sha256(path),
+                    "size": path.stat().st_size,
+                }
+                for artifact_id, path in sorted(self.artifacts.items())
+            ],
+            "upm_package": {"sha256": "b" * 64, "entries": []},
+        }
+        path = self.root / "candidate.json"
+        path.write_text(json.dumps(candidate), encoding="utf-8")
+        return path
+
+    def candidate_binding(self, candidate_path: pathlib.Path) -> dict:
+        candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+        return {
+            "candidate_id": candidate["candidate_id"],
+            **candidate["identity"],
+        }
+
+    def verify_arguments(
+        self, evidence: pathlib.Path, candidate: pathlib.Path | None = None
+    ) -> list[str]:
+        arguments = [
             "verify",
             "--evidence",
             str(evidence),
@@ -96,6 +146,9 @@ class ReleaseEvidenceTest(unittest.TestCase):
             "--artifact",
             f"godot.zip={self.artifacts['godot.zip']}",
         ]
+        if candidate is not None:
+            arguments.extend(["--candidate", str(candidate)])
+        return arguments
 
     def test_exact_artifacts_and_all_shared_suites_are_accepted(self) -> None:
         result = self.run_tool(*self.verify_arguments(self.write_evidence()))
@@ -108,6 +161,27 @@ class ReleaseEvidenceTest(unittest.TestCase):
         result = self.run_tool(*self.verify_arguments(evidence))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("artifact digest mismatch", result.stderr)
+
+    def test_complete_candidate_identity_is_required_when_candidate_is_supplied(
+        self,
+    ) -> None:
+        candidate = self.write_candidate()
+        evidence_path = self.write_evidence()
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["candidate"] = self.candidate_binding(candidate)
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        result = self.run_tool(
+            *self.verify_arguments(evidence_path, candidate)
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        evidence["candidate"]["source_sha"] = "c" * 40
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        result = self.run_tool(
+            *self.verify_arguments(evidence_path, candidate)
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("candidate identity mismatch", result.stderr)
 
     def test_unverified_required_suite_fails_closed(self) -> None:
         result = self.run_tool(

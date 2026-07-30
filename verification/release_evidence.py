@@ -53,6 +53,52 @@ def expected_digests(artifacts: dict[str, pathlib.Path]) -> dict[str, str]:
     return {artifact_id: sha256(path) for artifact_id, path in artifacts.items()}
 
 
+def canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=True, separators=(",", ":"), sort_keys=True
+    ).encode("utf-8")
+
+
+def candidate_binding(
+    path: pathlib.Path,
+    compatibility_path: pathlib.Path,
+    digests: dict[str, str],
+) -> dict:
+    manifest = read_json(path)
+    required = {
+        "schema_version",
+        "candidate_id",
+        "identity",
+        "artifacts",
+        "upm_package",
+    }
+    if set(manifest) != required or manifest.get("schema_version") != 1:
+        raise EvidenceError("Release Candidate manifest shape is invalid")
+    identity = manifest["identity"]
+    if set(identity) != {
+        "version",
+        "channel",
+        "source_sha",
+        "compatibility_sha256",
+        "artifact_sha256",
+    }:
+        raise EvidenceError("Release Candidate identity shape is invalid")
+    expected_id = hashlib.sha256(canonical_json(identity)).hexdigest()
+    if manifest["candidate_id"] != expected_id:
+        raise EvidenceError("Release Candidate id differs from canonical identity")
+    compatibility = read_json(compatibility_path)
+    if identity["version"] != compatibility.get("sdk_version"):
+        raise EvidenceError("Release Candidate version differs from compatibility")
+    if identity["compatibility_sha256"] != sha256(compatibility_path):
+        raise EvidenceError("Release Candidate compatibility digest mismatch")
+    if identity["artifact_sha256"] != digests:
+        raise EvidenceError("Release Candidate artifact digest mismatch")
+    return {
+        "candidate_id": manifest["candidate_id"],
+        **identity,
+    }
+
+
 def required_environments(compatibility: dict) -> list[dict[str, str]]:
     environments = []
     profile_ids = [
@@ -107,6 +153,7 @@ def validate_evidence(
     compatibility: dict,
     suites: dict,
     digests: dict[str, str],
+    exact_candidate: dict | None = None,
 ) -> tuple[str, str, str]:
     required_top = {
         "schema_version",
@@ -119,19 +166,23 @@ def validate_evidence(
         raise EvidenceError("Release Evidence top-level shape is invalid")
 
     candidate = evidence["candidate"]
-    if candidate.get("sdk_version") != compatibility.get("sdk_version"):
-        raise EvidenceError("Release Evidence SDK version differs from compatibility")
-    declared_artifacts = candidate.get("artifacts", [])
-    declared = {
-        item.get("id"): item.get("sha256")
-        for item in declared_artifacts
-        if isinstance(item, dict)
-    }
-    if len(declared_artifacts) != 3 or set(declared) != ARTIFACT_IDS:
-        raise EvidenceError("Release Evidence must bind the exact three artifacts")
-    for artifact_id, expected in digests.items():
-        if declared[artifact_id] != expected:
-            raise EvidenceError("artifact digest mismatch: " + artifact_id)
+    if exact_candidate is not None:
+        if candidate != exact_candidate:
+            raise EvidenceError("candidate identity mismatch")
+    else:
+        if candidate.get("sdk_version") != compatibility.get("sdk_version"):
+            raise EvidenceError("Release Evidence SDK version differs from compatibility")
+        declared_artifacts = candidate.get("artifacts", [])
+        declared = {
+            item.get("id"): item.get("sha256")
+            for item in declared_artifacts
+            if isinstance(item, dict)
+        }
+        if len(declared_artifacts) != 3 or set(declared) != ARTIFACT_IDS:
+            raise EvidenceError("Release Evidence must bind the exact three artifacts")
+        for artifact_id, expected in digests.items():
+            if declared[artifact_id] != expected:
+                raise EvidenceError("artifact digest mismatch: " + artifact_id)
 
     if evidence["suite_version"] != suites.get("suite_version"):
         raise EvidenceError("shared suite version mismatch")
@@ -205,11 +256,22 @@ def validate_evidence(
 
 def verify_command(arguments: argparse.Namespace) -> None:
     artifacts = parse_artifacts(arguments.artifact)
+    digests = expected_digests(artifacts)
+    exact_candidate = (
+        candidate_binding(
+            pathlib.Path(arguments.candidate),
+            pathlib.Path(arguments.compatibility),
+            digests,
+        )
+        if arguments.candidate
+        else None
+    )
     validate_evidence(
         read_json(pathlib.Path(arguments.evidence)),
         read_json(pathlib.Path(arguments.compatibility)),
         read_json(pathlib.Path(arguments.suites)),
-        expected_digests(artifacts),
+        digests,
+        exact_candidate,
     )
     print("verified Release Evidence against exact final artifact digests")
 
@@ -219,6 +281,15 @@ def gate_command(arguments: argparse.Namespace) -> None:
     compatibility = read_json(pathlib.Path(arguments.compatibility))
     suites = read_json(pathlib.Path(arguments.suites))
     digests = expected_digests(artifacts)
+    exact_candidate = (
+        candidate_binding(
+            pathlib.Path(arguments.candidate),
+            pathlib.Path(arguments.compatibility),
+            digests,
+        )
+        if arguments.candidate
+        else None
+    )
     manifest = read_json(pathlib.Path(arguments.manifest))
     if set(manifest) != {"schema_version", "evidence"} or manifest["schema_version"] != 1:
         raise EvidenceError("Release Evidence manifest shape is invalid")
@@ -226,13 +297,10 @@ def gate_command(arguments: argparse.Namespace) -> None:
     candidate_identity = None
     for raw_path in manifest["evidence"]:
         evidence = read_json(pathlib.Path(raw_path))
-        key = validate_evidence(evidence, compatibility, suites, digests)
-        identity = tuple(
-            sorted(
-                (item["id"], item["sha256"])
-                for item in evidence["candidate"]["artifacts"]
-            )
+        key = validate_evidence(
+            evidence, compatibility, suites, digests, exact_candidate
         )
+        identity = canonical_json(evidence["candidate"])
         if candidate_identity is None:
             candidate_identity = identity
         elif identity != candidate_identity:
@@ -299,9 +367,19 @@ def record_command(arguments: argparse.Namespace) -> None:
     if not set(supplied_results.values()) <= {"passed", "failed", "unverified"}:
         raise EvidenceError("suite result must be passed, failed, or unverified")
     digests = expected_digests(artifacts)
+    exact_candidate = (
+        candidate_binding(
+            pathlib.Path(arguments.candidate),
+            pathlib.Path(arguments.compatibility),
+            digests,
+        )
+        if arguments.candidate
+        else None
+    )
     evidence = {
         "schema_version": 1,
-        "candidate": {
+        "candidate": exact_candidate
+        or {
             "sdk_version": compatibility["sdk_version"],
             "artifacts": [
                 {"id": artifact_id, "sha256": digests[artifact_id]}
@@ -345,6 +423,7 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("--manifest", required=True)
         command.add_argument("--compatibility", required=True)
         command.add_argument("--suites", required=True)
+        command.add_argument("--candidate")
         command.add_argument("--artifact", action="append", default=[])
         command.set_defaults(handler=handler)
     plan = commands.add_parser("plan")
@@ -355,6 +434,7 @@ def parser() -> argparse.ArgumentParser:
     record.add_argument("--output", required=True)
     record.add_argument("--compatibility", required=True)
     record.add_argument("--suites", required=True)
+    record.add_argument("--candidate")
     record.add_argument("--engine", choices=["unity", "godot"], required=True)
     record.add_argument("--engine-version", required=True)
     record.add_argument("--profile", required=True)

@@ -1,0 +1,109 @@
+name: Release Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact SDK version to promote
+        required: true
+        type: string
+      candidate_id:
+        description: SHA-256 candidate identity approved for promotion
+        required: true
+        type: string
+      candidate_run_id:
+        description: Successful Release Candidate workflow run id
+        required: true
+        type: string
+      evidence_run_id:
+        description: Run id containing the complete candidate-bound evidence bundle
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: verve-release-promotion
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Check out trusted promotion code from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Download immutable candidate from its successful run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-candidate-${{ inputs.version }}
+          path: release-candidate
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.candidate_run_id }}
+          digest-mismatch: error
+      - name: Download complete candidate-bound Release Evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-evidence-${{ inputs.version }}
+          path: release-evidence
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.evidence_run_id }}
+          digest-mismatch: error
+      - name: Verify source runs, candidate identity, evidence, and final bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_CANDIDATE_ID: ${{ inputs.candidate_id }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          EVIDENCE_RUN_ID: ${{ inputs.evidence_run_id }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for run_id in "$CANDIDATE_RUN_ID" "$EVIDENCE_RUN_ID"; do
+            conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq .conclusion)"
+            test "$conclusion" = success
+          done
+          python3 release/release_tool.py candidate verify \
+            --candidate release-candidate/candidate.json \
+            --bundle release-candidate
+          actual_candidate_id="$(
+            python3 -c 'import json; print(json.load(open("release-candidate/candidate.json"))["candidate_id"])'
+          )"
+          test "$actual_candidate_id" = "$EXPECTED_CANDIDATE_ID"
+          test "$(
+            python3 -c 'import json; print(json.load(open("release-candidate/candidate.json"))["identity"]["version"])'
+          )" = "$RELEASE_VERSION"
+          (
+            cd release-evidence
+            python3 ../verification/release_evidence.py gate \
+              --candidate ../release-candidate/candidate.json \
+              --manifest manifest.json \
+              --compatibility ../release-candidate/compatibility.json \
+              --suites ../verification/shared-suites.json \
+              --artifact "unity.tgz=../release-candidate/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz" \
+              --artifact "unity.zip=../release-candidate/com.tedliou.verve-webview-${RELEASE_VERSION}.zip" \
+              --artifact "godot.zip=../release-candidate/verve-webview-godot-${RELEASE_VERSION}.zip"
+          )
+      - name: Reconcile and promote exact existing bytes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release/release_tool.py candidate verify \
+            --candidate release-candidate/candidate.json \
+            --bundle release-candidate
+          python3 release/release_tool.py promotion apply \
+            --candidate release-candidate/candidate.json \
+            --bundle release-candidate \
+            --repository "$GITHUB_REPOSITORY" \
+            --output promotion-evidence.json

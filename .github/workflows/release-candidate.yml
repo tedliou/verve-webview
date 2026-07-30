@@ -1,0 +1,405 @@
+name: Release Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact SDK SemVer from compatibility.json
+        required: true
+        type: string
+      channel:
+        description: Release channel
+        required: true
+        type: choice
+        options:
+          - stable
+          - prerelease
+          - experimental
+      source_sha:
+        description: Full source commit SHA reachable from main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  BAZEL_VERSION: 8.7.0
+  RELEASE_VERSION: ${{ inputs.version }}
+  RELEASE_CHANNEL: ${{ inputs.channel }}
+  SOURCE_SHA: ${{ inputs.source_sha }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate candidate request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$SOURCE_SHA" = "$(git rev-parse "$SOURCE_SHA^{commit}")"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main
+          python3 - "$RELEASE_VERSION" "$RELEASE_CHANNEL" <<'PY'
+          import json
+          import pathlib
+          import re
+          import sys
+
+          version, channel = sys.argv[1:]
+          patterns = {
+              "stable": r"[0-9]+\.[0-9]+\.[0-9]+",
+              "prerelease": r"[0-9]+\.[0-9]+\.[0-9]+-pre\.[0-9]+",
+              "experimental": r"[0-9]+\.[0-9]+\.[0-9]+-exp\.[0-9]+",
+          }
+          if not re.fullmatch(patterns[channel], version):
+              raise SystemExit("version does not match release channel")
+          compatibility = json.loads(
+              pathlib.Path("compatibility/compatibility.json").read_text()
+          )
+          if compatibility["sdk_version"] != version:
+              raise SystemExit("compatibility.json sdk_version mismatch")
+          PY
+          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION"; then
+            echo "source release tag already exists" >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/upm-v$RELEASE_VERSION"; then
+            echo "UPM release tag already exists" >&2
+            exit 1
+          fi
+          existing_release="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+              --jq ".[] | select(.tag_name == \"v${RELEASE_VERSION}\") | .id"
+          )"
+          test -z "$existing_release"
+
+  linux-fragments:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - name: Install checksummed Bazel
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
+          echo "d7606e679b78067c811096fb3d6cf135225b528835ca396e3a4dddf957859544  $RUNNER_TEMP/bazel" \
+            | sha256sum --check
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build and envelope Linux-owned fragments
+        shell: bash
+        run: |
+          set -euo pipefail
+          for engine in unity godot; do
+            for platform in android web; do
+              bazel_platform=release_android_arm64
+              if [[ "$platform" == web ]]; then bazel_platform=release_web_wasm32; fi
+              "$RUNNER_TEMP/bazel" build \
+                "//packages/webview-${engine}:binding_${platform}" \
+                --//build:release_version="$RELEASE_VERSION" \
+                --platforms="//build/platforms:${bazel_platform}"
+              root="staging/${engine}/${platform}"
+              mkdir -p "$root"
+              cp -R -L \
+                "bazel-bin/packages/webview-${engine}/binding_${platform}.fragment-tree" \
+                "$root/tree"
+              cp \
+                "bazel-bin/packages/webview-${engine}/binding_${platform}.content-manifest.json" \
+                "$root/content-manifest.json"
+              cp \
+                "bazel-bin/packages/webview-${engine}/binding_${platform}.fragment-manifest.json" \
+                "$root/fragment-manifest.json"
+              python3 release/release_tool.py fragment record \
+                --fragment "$root" \
+                --output "$root/release-fragment.json" \
+                --source-sha "$SOURCE_SHA" \
+                --compatibility compatibility/compatibility.json \
+                --toolchain runner=ubuntu-24.04 \
+                --toolchain bazel=8.7.0 \
+                --toolchain rust=1.85.0 \
+                --toolchain android_api=35
+            done
+          done
+      - name: Upload Linux fragments
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-fragments-linux
+          path: staging
+          if-no-files-found: error
+          retention-days: 30
+
+  ios-fragments:
+    needs: validate
+    runs-on: macos-15
+    steps:
+      - name: Check out the exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - name: Select exact Xcode and install checksummed Bazel
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          test "$(xcodebuild -version | head -1)" = "Xcode 16.4"
+          architecture="$(uname -m)"
+          case "$architecture" in
+            arm64) digest=575f20fb23955e02f73519befd180df635b4ed0960c60f0e70fcc8d74014a713 ;;
+            x86_64) digest=76f3eb05782098e9f9ddd8247ec969b085195a3ae2978c81721a2235052ccf26 ;;
+            *) echo "unsupported macOS architecture: $architecture" >&2; exit 1 ;;
+          esac
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-darwin-${architecture}"
+          echo "$digest  $RUNNER_TEMP/bazel" | shasum -a 256 --check
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build and envelope iOS fragments
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcode_identity="$(xcodebuild -version | tr '\n' ' ' | sed 's/ $//')"
+          for engine in unity godot; do
+            "$RUNNER_TEMP/bazel" build \
+              "//packages/webview-${engine}:binding_ios" \
+              --//build:release_version="$RELEASE_VERSION" \
+              --platforms=//build/platforms:release_ios_xcframework
+            root="staging/${engine}/ios"
+            mkdir -p "$root"
+            cp -R -L \
+              "bazel-bin/packages/webview-${engine}/binding_ios.fragment-tree" \
+              "$root/tree"
+            cp \
+              "bazel-bin/packages/webview-${engine}/binding_ios.content-manifest.json" \
+              "$root/content-manifest.json"
+            cp \
+              "bazel-bin/packages/webview-${engine}/binding_ios.fragment-manifest.json" \
+              "$root/fragment-manifest.json"
+            python3 release/release_tool.py fragment record \
+              --fragment "$root" \
+              --output "$root/release-fragment.json" \
+              --source-sha "$SOURCE_SHA" \
+              --compatibility compatibility/compatibility.json \
+              --toolchain runner=macos-15 \
+              --toolchain bazel=8.7.0 \
+              --toolchain "xcode=$xcode_identity"
+          done
+      - name: Upload iOS fragments
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-fragments-ios
+          path: staging
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-fragments:
+    needs: validate
+    runs-on: windows-2022
+    steps:
+      - name: Check out the exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - name: Install checksummed Bazel
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $bazel = Join-Path $env:RUNNER_TEMP "bazel.exe"
+          Invoke-WebRequest `
+            "https://github.com/bazelbuild/bazel/releases/download/$env:BAZEL_VERSION/bazel-$env:BAZEL_VERSION-windows-x86_64.exe" `
+            -OutFile $bazel
+          $actual = (Get-FileHash -Algorithm SHA256 $bazel).Hash.ToLowerInvariant()
+          if ($actual -ne "29f1796f57379933340afa135f02703ffa21dd30135754bea695f8fd15103420") {
+            throw "Bazel digest mismatch: $actual"
+          }
+      - name: Build and envelope Windows fragments
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msvc = (& $vswhere -latest -property installationVersion).Trim()
+          $sdk = (
+            Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Lib" -Directory |
+            Sort-Object Name |
+            Select-Object -Last 1
+          ).Name
+          foreach ($engine in @("unity", "godot")) {
+            & "$env:RUNNER_TEMP/bazel.exe" build `
+              "//packages/webview-$engine`:binding_windows" `
+              "--//build:release_version=$env:RELEASE_VERSION" `
+              "--platforms=//build/platforms:release_windows_x86_64"
+            if ($LASTEXITCODE -ne 0) { throw "Bazel Windows build failed" }
+            $root = "staging/$engine/windows"
+            New-Item -ItemType Directory -Force $root | Out-Null
+            Copy-Item -Recurse -Force `
+              "bazel-bin/packages/webview-$engine/binding_windows.fragment-tree" `
+              "$root/tree"
+            Copy-Item `
+              "bazel-bin/packages/webview-$engine/binding_windows.content-manifest.json" `
+              "$root/content-manifest.json"
+            Copy-Item `
+              "bazel-bin/packages/webview-$engine/binding_windows.fragment-manifest.json" `
+              "$root/fragment-manifest.json"
+            python release/release_tool.py fragment record `
+              --fragment $root `
+              --output "$root/release-fragment.json" `
+              --source-sha $env:SOURCE_SHA `
+              --compatibility compatibility/compatibility.json `
+              --toolchain runner=windows-2022 `
+              --toolchain bazel=8.7.0 `
+              --toolchain "msvc=$msvc" `
+              --toolchain "windows_sdk=$sdk"
+            if ($LASTEXITCODE -ne 0) { throw "fragment envelope failed" }
+          }
+      - name: Upload Windows fragments
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-fragments-windows
+          path: staging
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: [linux-fragments, ios-fragments, windows-fragments]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out the exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - name: Download Linux fragments
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-fragments-linux
+          path: release/downloads
+      - name: Download iOS fragments
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-fragments-ios
+          path: release/downloads
+      - name: Download Windows fragments
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-fragments-windows
+          path: release/downloads
+      - name: Verify every host envelope before import
+        shell: bash
+        run: |
+          set -euo pipefail
+          for engine in unity godot; do
+            for platform in android ios windows web; do
+              python3 release/release_tool.py fragment verify \
+                --fragment "release/downloads/${engine}/${platform}" \
+                --source-sha "$SOURCE_SHA" \
+                --compatibility compatibility/compatibility.json
+            done
+            python3 build/generate_fragment_repository.py \
+              --downloads "release/downloads/${engine}" \
+              --output "release/fragments-${engine}"
+          done
+      - name: Install checksummed Bazel
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
+          echo "d7606e679b78067c811096fb3d6cf135225b528835ca396e3a4dddf957859544  $RUNNER_TEMP/bazel" \
+            | sha256sum --check
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Test and assemble both final distributions once
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/bazel" test \
+            //release:release_tool_test \
+            //release:workflow_policy_test \
+            //verification:release_evidence_test \
+            //verification:example_apps_test \
+            //verification:contract_matrix_test \
+            //build:distribution_tool_test \
+            //build:generate_fragment_repository_test \
+            --test_output=errors
+          for engine in unity godot; do
+            common=(
+              "--//build:release_version=$RELEASE_VERSION"
+              "--//build:use_imported_fragments=true"
+              "--platforms=//build/platforms:canonical_aggregation"
+              "--override_repository=+_repo_rules+release_fragments=$PWD/release/fragments-$engine"
+            )
+            "$RUNNER_TEMP/bazel" test \
+              "//packages/webview-${engine}:sdk_distribution_test" \
+              "//examples:${engine}_example_distribution_test" \
+              "${common[@]}" \
+              --test_output=errors
+            "$RUNNER_TEMP/bazel" build "//packages/webview-${engine}:sdk" \
+              "${common[@]}" \
+              --output_groups=default,package_tree,content_manifest,compatibility,provenance
+          done
+      - name: Form and verify one immutable candidate bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release/candidate
+          cp bazel-bin/packages/webview-unity/_sdk_tgz.tgz \
+            "release/candidate/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz"
+          cp bazel-bin/packages/webview-unity/_sdk_zip.zip \
+            "release/candidate/com.tedliou.verve-webview-${RELEASE_VERSION}.zip"
+          cp bazel-bin/packages/webview-godot/_sdk_zip.zip \
+            "release/candidate/verve-webview-godot-${RELEASE_VERSION}.zip"
+          cp compatibility/compatibility.json release/candidate/compatibility.json
+          cp -R -L bazel-bin/packages/webview-unity/_sdk_merge.package-tree \
+            release/candidate/upm-package
+          python3 release/release_tool.py candidate create \
+            --output release/candidate/candidate.json \
+            --bundle release/candidate \
+            --version "$RELEASE_VERSION" \
+            --channel "$RELEASE_CHANNEL" \
+            --source-sha "$SOURCE_SHA" \
+            --compatibility release/candidate/compatibility.json \
+            --upm-tree release/candidate/upm-package \
+            --artifact "unity.tgz=com.tedliou.verve-webview-${RELEASE_VERSION}.tgz" \
+            --artifact "unity.zip=com.tedliou.verve-webview-${RELEASE_VERSION}.zip" \
+            --artifact "godot.zip=verve-webview-godot-${RELEASE_VERSION}.zip"
+          python3 release/release_tool.py candidate verify \
+            --candidate release/candidate/candidate.json \
+            --bundle release/candidate
+          python3 verification/release_evidence.py plan \
+            --compatibility release/candidate/compatibility.json \
+            --suites verification/shared-suites.json \
+            > release/candidate/verification-plan.json
+      - name: Attest final candidate bytes
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: |
+            release/candidate/*.tgz
+            release/candidate/*.zip
+            release/candidate/candidate.json
+            release/candidate/compatibility.json
+            release/candidate/SHA256SUMS
+      - name: Upload immutable Release Candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-candidate-${{ inputs.version }}
+          path: release/candidate
+          if-no-files-found: error
+          retention-days: 30
