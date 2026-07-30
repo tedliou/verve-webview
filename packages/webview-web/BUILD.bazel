@@ -23,21 +23,21 @@ web_core_test_payload(
 )
 
 sh_test(
-    name = "web_runtime_backend_test",
-    srcs = ["tests/web_runtime_backend_test.sh"],
+    name = "web_runtime_test",
+    srcs = ["tests/web_runtime_test.sh"],
     args = [
-        "$(location tests/web_runtime_backend_harness.py)",
+        "$(location tests/web_runtime_harness.py)",
         "$(locations :_browser_test_core)",
         "$(location src/verve_webview_web_backend.js)",
-        "$(location tests/web_runtime_backend_harness.html)",
-        "$(location tests/web_runtime_backend_harness.js)",
+        "$(location tests/web_runtime_harness.html)",
+        "$(location tests/web_runtime_harness.js)",
         "$(location tests/surface_content.html)",
     ],
     data = [
         "src/verve_webview_web_backend.js",
-        "tests/web_runtime_backend_harness.html",
-        "tests/web_runtime_backend_harness.js",
-        "tests/web_runtime_backend_harness.py",
+        "tests/web_runtime_harness.html",
+        "tests/web_runtime_harness.js",
+        "tests/web_runtime_harness.py",
         "tests/surface_content.html",
         ":_browser_test_core",
     ],

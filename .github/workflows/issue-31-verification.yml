@@ -165,7 +165,7 @@ jobs:
             //packages/webview-core:browser_bundle_shape_test \
             //packages/webview-core:browser_harness_test \
             //packages/webview-core:browser_consumer_identity_test \
-            //packages/webview-web:web_runtime_backend_test \
+            //packages/webview-web:web_runtime_test \
             //packages/webview-godot:binding_metadata_test \
             --test_env=CHROME_BIN=/usr/bin/google-chrome \
             --test_output=errors

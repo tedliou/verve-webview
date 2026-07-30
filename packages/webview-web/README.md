@@ -35,5 +35,5 @@ boundary for top navigation and new browsing contexts.
 Run the real-browser contract:
 
 ```sh
-bazel test //packages/webview-web:web_runtime_backend_test --lockfile_mode=error
+bazel test //packages/webview-web:web_runtime_test --lockfile_mode=error
 ```
