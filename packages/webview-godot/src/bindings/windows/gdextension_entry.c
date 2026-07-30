@@ -19,6 +19,18 @@ typedef struct GDExtensionInitialization {
   GDExtensionInitializationFunction deinitialize;
 } GDExtensionInitialization;
 
+static void verve_webview_initialize(void *userdata,
+                                     int32_t initialization_level) {
+  (void)userdata;
+  (void)initialization_level;
+}
+
+static void verve_webview_deinitialize(void *userdata,
+                                       int32_t initialization_level) {
+  (void)userdata;
+  (void)initialization_level;
+}
+
 /*
  * Empty engine-registration payload. The GDScript Adapter remains the public
  * API; this loadable Binding-owned library provides Godot's native lifecycle
@@ -35,7 +47,7 @@ VERVE_GDEXPORT GDExtensionBool verve_webview_library_init(
   }
   initialization->minimum_initialization_level = 0;
   initialization->userdata = 0;
-  initialization->initialize = 0;
-  initialization->deinitialize = 0;
+  initialization->initialize = verve_webview_initialize;
+  initialization->deinitialize = verve_webview_deinitialize;
   return 1;
 }

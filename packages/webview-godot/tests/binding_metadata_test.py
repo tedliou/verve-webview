@@ -65,6 +65,18 @@ class BindingMetadataTest(unittest.TestCase):
             "4.7",
         )
         self.assertIn("windows.release.x86_64", descriptor["libraries"])
+        self.assertIn("windows.debug.editor.x86_64", descriptor["libraries"])
+        self.assertIn("linux.debug.editor.x86_64", descriptor["libraries"])
+        entry = (
+            ROOT / "src/bindings/windows/gdextension_entry.c"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "initialization->initialize = verve_webview_initialize", entry
+        )
+        self.assertIn(
+            "initialization->deinitialize = verve_webview_deinitialize", entry
+        )
+        self.assertNotIn("initialization->initialize = 0", entry)
 
     def test_web_hook_lists_the_shared_core_and_backend_payloads(self):
         hook = (

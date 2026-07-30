@@ -155,6 +155,7 @@ py_test(
         "src/bindings/android/android_export_plugin.gd",
         "src/bindings/ios/verve_webview.gdip",
         "src/bindings/web/web_export_plugin.gd",
+        "src/bindings/windows/gdextension_entry.c",
         "src/bindings/windows/verve_webview.gdextension",
     ],
     main = "tests/binding_metadata_test.py",

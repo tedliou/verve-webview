@@ -6,5 +6,7 @@ reloadable = false
 
 [libraries]
 
+windows.debug.editor.x86_64 = "res://addons/verve_webview/bin/windows/x86_64/verve_webview_godot.dll"
 windows.release.x86_64 = "res://addons/verve_webview/bin/windows/x86_64/verve_webview_godot.dll"
+linux.debug.editor.x86_64 = "res://addons/verve_webview/bin/windows/editor/linux/x86_64/libverve_webview_godot_editor.so"
 linux.release.x86_64 = "res://addons/verve_webview/bin/windows/editor/linux/x86_64/libverve_webview_godot_editor.so"
