@@ -142,7 +142,8 @@ jobs:
           "$RUNNER_TEMP/bazel" test //packages/webview-unity:sdk_distribution_test \
             --//build:release_version="$RELEASE_VERSION" \
             --//build:use_imported_fragments=true \
-            --platforms=//build/platforms:canonical_aggregation
+            --platforms=//build/platforms:canonical_aggregation \
+            --test_output=errors
           "$RUNNER_TEMP/bazel" build //packages/webview-unity:sdk \
             --//build:release_version="$RELEASE_VERSION" \
             --//build:use_imported_fragments=true \

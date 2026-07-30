@@ -594,15 +594,19 @@ _fragment_merge = rule(
 
 def _sdk_outputs_impl(ctx):
     merge = ctx.attr.merge
+    output_groups = merge[OutputGroupInfo]
     return [
         DefaultInfo(files = depset(
             direct = [ctx.file.tgz, ctx.file.zip],
-            transitive = [merge[DefaultInfo].files],
+            transitive = [
+                output_groups.package_tree,
+                output_groups.content_manifest,
+            ],
         )),
         OutputGroupInfo(
-            package_tree = merge[OutputGroupInfo].package_tree,
-            content_manifest = merge[OutputGroupInfo].content_manifest,
-            provenance = merge[OutputGroupInfo].provenance,
+            package_tree = output_groups.package_tree,
+            content_manifest = output_groups.content_manifest,
+            provenance = output_groups.provenance,
         ),
     ]
 
