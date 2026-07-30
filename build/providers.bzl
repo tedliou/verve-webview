@@ -36,8 +36,11 @@ DistributionFragmentInfo = provider(
     doc = "Explicit installable entries and verified metadata; never an archive.",
     fields = {
         "entries": "depset of explicit installable entry Files",
+        "destinations": "immutable archive-relative destination to File map",
         "compatibility": "shared compatibility metadata File",
         "content_manifest": "content manifest File",
         "fragment_manifest": "identity and provenance manifest File",
+        "release_version": "the single configured SDK release version",
+        "verification": "depset that forces fragment checksum/provenance verification",
     },
 )

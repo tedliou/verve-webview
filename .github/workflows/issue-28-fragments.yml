@@ -1,0 +1,164 @@
+name: Issue 28 controlled Unity fragments
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BAZEL_VERSION: 8.7.0
+  RELEASE_VERSION: 0.0.0-pre.0
+
+jobs:
+  android-web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Bazel
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build canonical fragments
+        run: |
+          "$RUNNER_TEMP/bazel" build //packages/webview-unity:binding_android \
+            --//build:release_version="$RELEASE_VERSION" \
+            --platforms=//build/platforms:release_android_arm64
+          "$RUNNER_TEMP/bazel" build //packages/webview-unity:binding_web \
+            --//build:release_version="$RELEASE_VERSION" \
+            --platforms=//build/platforms:release_web_wasm32
+      - name: Stage fragments
+        run: |
+          for platform in android web; do
+            mkdir -p "staging/$platform"
+            cp -R -L "bazel-bin/packages/webview-unity/binding_${platform}.fragment-tree" "staging/$platform/tree"
+            cp "bazel-bin/packages/webview-unity/binding_${platform}.content-manifest.json" "staging/$platform/content-manifest.json"
+            cp "bazel-bin/packages/webview-unity/binding_${platform}.fragment-manifest.json" "staging/$platform/fragment-manifest.json"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fragment-android
+          path: staging/android
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fragment-web
+          path: staging/web
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+      - name: Install pinned Bazel
+        run: |
+          if [[ "$(uname -m)" == "arm64" ]]; then architecture=arm64; else architecture=x86_64; fi
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-darwin-${architecture}"
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build canonical fragment
+        run: |
+          "$RUNNER_TEMP/bazel" build //packages/webview-unity:binding_ios \
+            --//build:release_version="$RELEASE_VERSION" \
+            --platforms=//build/platforms:release_ios_xcframework
+      - name: Stage fragment
+        run: |
+          mkdir -p staging/ios
+          cp -R -L bazel-bin/packages/webview-unity/binding_ios.fragment-tree staging/ios/tree
+          cp bazel-bin/packages/webview-unity/binding_ios.content-manifest.json staging/ios/content-manifest.json
+          cp bazel-bin/packages/webview-unity/binding_ios.fragment-manifest.json staging/ios/fragment-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fragment-ios
+          path: staging/ios
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Bazel
+        shell: pwsh
+        run: |
+          $bazel = Join-Path $env:RUNNER_TEMP "bazel.exe"
+          Invoke-WebRequest `
+            "https://github.com/bazelbuild/bazel/releases/download/$env:BAZEL_VERSION/bazel-$env:BAZEL_VERSION-windows-x86_64.exe" `
+            -OutFile $bazel
+      - name: Build canonical fragment
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP/bazel.exe" build //packages/webview-unity:binding_windows `
+            "--//build:release_version=$env:RELEASE_VERSION" `
+            "--platforms=//build/platforms:release_windows_x86_64"
+      - name: Stage fragment
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force staging/windows | Out-Null
+          Copy-Item -Recurse -Force bazel-bin/packages/webview-unity/binding_windows.fragment-tree staging/windows/tree
+          Copy-Item bazel-bin/packages/webview-unity/binding_windows.content-manifest.json staging/windows/content-manifest.json
+          Copy-Item bazel-bin/packages/webview-unity/binding_windows.fragment-manifest.json staging/windows/fragment-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fragment-windows
+          path: staging/windows
+          if-no-files-found: error
+
+  aggregate:
+    needs: [android-web, ios, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: fragment-android
+          path: release/downloads/android
+      - uses: actions/download-artifact@v4
+        with:
+          name: fragment-ios
+          path: release/downloads/ios
+      - uses: actions/download-artifact@v4
+        with:
+          name: fragment-windows
+          path: release/downloads/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: fragment-web
+          path: release/downloads/web
+      - name: Generate explicit imported-fragment repository
+        run: |
+          python3 build/generate_fragment_repository.py \
+            --downloads release/downloads \
+            --output release/fragments
+      - name: Install pinned Bazel
+        run: |
+          curl --fail --location --output "$RUNNER_TEMP/bazel" \
+            "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-linux-x86_64"
+          chmod +x "$RUNNER_TEMP/bazel"
+      - name: Build and verify the public SDK target
+        run: |
+          "$RUNNER_TEMP/bazel" test //packages/webview-unity:sdk_distribution_test \
+            --//build:release_version="$RELEASE_VERSION" \
+            --//build:use_imported_fragments=true \
+            --platforms=//build/platforms:canonical_aggregation
+          "$RUNNER_TEMP/bazel" build //packages/webview-unity:sdk \
+            --//build:release_version="$RELEASE_VERSION" \
+            --//build:use_imported_fragments=true \
+            --platforms=//build/platforms:canonical_aggregation \
+            --output_groups=default,package_tree,content_manifest,provenance
+      - name: Stage final artifacts
+        run: |
+          mkdir -p release/final
+          cp bazel-bin/packages/webview-unity/_sdk_tgz.tgz \
+            "release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.tgz"
+          cp bazel-bin/packages/webview-unity/_sdk_zip.zip \
+            "release/final/com.tedliou.verve-webview-${RELEASE_VERSION}.zip"
+          cp -R -L bazel-bin/packages/webview-unity/_sdk_merge.package-tree \
+            release/final/package-tree
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unity-sdk-distribution
+          path: release/final
+          if-no-files-found: error

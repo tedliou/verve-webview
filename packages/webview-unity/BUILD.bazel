@@ -1,16 +1,37 @@
 load("//build:module_rules.bzl", "engine_sdk_distribution")
 load("//packages/webview-unity:build/unity_adapter.bzl", "unity_adapter", "unity_binding")
-
-filegroup(
-    name = "adapter_sources",
-    srcs = glob(["src/adapter/*.cs"]),
-)
+load("@rules_python//python:defs.bzl", "py_test")
 
 unity_adapter(
     name = "adapter",
     api_contract = "//packages/webview-core:api_contract",
     compatibility = "//compatibility:compatibility.json",
-    srcs = [":adapter_sources"],
+    entries = {
+        "src/adapter/AssemblyInfo.cs": "Runtime/AssemblyInfo.cs",
+        "src/adapter/BridgeTypes.cs": "Runtime/BridgeTypes.cs",
+        "src/adapter/DiagnosticDetail.cs": "Runtime/DiagnosticDetail.cs",
+        "src/adapter/EditorFakeWebViewBridge.cs": "Runtime/EditorFakeWebViewBridge.cs",
+        "src/adapter/GeometryConverter.cs": "Runtime/GeometryConverter.cs",
+        "src/adapter/UnityEnvironment.cs": "Runtime/UnityEnvironment.cs",
+        "src/adapter/WebView.cs": "Runtime/WebView.cs",
+        "src/adapter/WebViewOptions.cs": "Runtime/WebViewOptions.cs",
+        "distribution/Runtime.meta": "Runtime.meta",
+        "distribution/Runtime/Verve.WebView.asmdef": "Runtime/Verve.WebView.asmdef",
+        "distribution/Runtime/Verve.WebView.asmdef.meta": "Runtime/Verve.WebView.asmdef.meta",
+        "distribution/Runtime/WebViewContract.g.cs.meta": "Runtime/WebViewContract.g.cs.meta",
+        "distribution/Runtime/adapter-source.meta": "Runtime/AssemblyInfo.cs.meta",
+        "distribution/Runtime/bridge-types.meta": "Runtime/BridgeTypes.cs.meta",
+        "distribution/Runtime/diagnostic-detail.meta": "Runtime/DiagnosticDetail.cs.meta",
+        "distribution/Runtime/editor-fake.meta": "Runtime/EditorFakeWebViewBridge.cs.meta",
+        "distribution/Runtime/geometry-converter.meta": "Runtime/GeometryConverter.cs.meta",
+        "distribution/Runtime/unity-environment.meta": "Runtime/UnityEnvironment.cs.meta",
+        "distribution/Runtime/webview-options.meta": "Runtime/WebViewOptions.cs.meta",
+        "distribution/Runtime/webview.meta": "Runtime/WebView.cs.meta",
+        "distribution/compatibility.json.meta": "compatibility.json.meta",
+        "distribution/content-manifest.json.meta": "content-manifest.json.meta",
+        "distribution/package.json.meta": "package.json.meta",
+    },
+    package_json_template = "distribution/package.json.in",
     visibility = ["//visibility:private"],
 )
 
@@ -18,7 +39,16 @@ unity_binding(
     name = "binding_android",
     adapter = ":adapter",
     backend = "//packages/webview-android:backend",
+    backend_entries = {
+        "release/arm64-v8a/verve-webview.aar": "Runtime/Plugins/Android/verve-webview.aar",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "distribution/Runtime/Plugins.meta": "Runtime/Plugins.meta",
+        "distribution/Runtime/Plugins/Android.meta": "Runtime/Plugins/Android.meta",
+        "distribution/Runtime/Plugins/Android/verve-webview.aar.meta": "Runtime/Plugins/Android/verve-webview.aar.meta",
+    },
+    architecture = "arm64-v8a",
     platform = "android",
     visibility = ["//visibility:private"],
 )
@@ -27,7 +57,15 @@ unity_binding(
     name = "binding_ios",
     adapter = ":adapter",
     backend = "//packages/webview-ios:backend",
+    backend_entries = {
+        "release/ios/VerveWebViewIOS.xcframework.zip": "Runtime/Plugins/iOS/VerveWebViewIOS.xcframework.zip",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "distribution/Runtime/Plugins/iOS.meta": "Runtime/Plugins/iOS.meta",
+        "distribution/Runtime/Plugins/iOS/VerveWebViewIOS.xcframework.zip.meta": "Runtime/Plugins/iOS/VerveWebViewIOS.xcframework.zip.meta",
+    },
+    architecture = "device-arm64_simulator-arm64-x86_64",
     platform = "ios",
     visibility = ["//visibility:private"],
 )
@@ -36,7 +74,16 @@ unity_binding(
     name = "binding_windows",
     adapter = ":adapter",
     backend = "//packages/webview-windows:backend",
+    backend_entries = {
+        "release/windows/x86_64/verve_webview_windows.dll": "Runtime/Plugins/Windows/x86_64/verve_webview_windows.dll",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "distribution/Runtime/Plugins/Windows.meta": "Runtime/Plugins/Windows.meta",
+        "distribution/Runtime/Plugins/Windows/x86_64.meta": "Runtime/Plugins/Windows/x86_64.meta",
+        "distribution/Runtime/Plugins/Windows/x86_64/verve_webview_windows.dll.meta": "Runtime/Plugins/Windows/x86_64/verve_webview_windows.dll.meta",
+    },
+    architecture = "x86_64",
     platform = "windows",
     visibility = ["//visibility:private"],
 )
@@ -45,7 +92,34 @@ unity_binding(
     name = "binding_web",
     adapter = ":adapter",
     backend = "//packages/webview-web:backend",
+    backend_entries = {
+        "backend_runtime": "Runtime/Web/Core/verve_webview_web_backend.js",
+    },
+    backend_file_entries = {
+        "web|api-contract.js": "Runtime/Web/Core/api-contract.js",
+        "web|verve_webview_core.js": "Runtime/Web/Core/verve_webview_core.js",
+        "web|verve_webview_core_bg.wasm": "Runtime/Web/Core/verve_webview_core_bg.wasm",
+        "web|verve_webview_core_facade.js": "Runtime/Web/Core/verve_webview_core_facade.js",
+    },
     compatibility = "//compatibility:compatibility.json",
+    entries = {
+        "distribution/Editor.meta": "Editor.meta",
+        "distribution/Editor/Verve.WebView.Editor.asmdef": "Editor/Verve.WebView.Editor.asmdef",
+        "distribution/Editor/Verve.WebView.Editor.asmdef.meta": "Editor/Verve.WebView.Editor.asmdef.meta",
+        "distribution/Editor/WebBuildPostprocessor.cs": "Editor/WebBuildPostprocessor.cs",
+        "distribution/Editor/WebBuildPostprocessor.cs.meta": "Editor/WebBuildPostprocessor.cs.meta",
+        "distribution/Runtime/Plugins/WebGL.meta": "Runtime/Plugins/WebGL.meta",
+        "distribution/Runtime/Plugins/WebGL/verve_webview.jslib": "Runtime/Plugins/WebGL/verve_webview.jslib",
+        "distribution/Runtime/Plugins/WebGL/verve_webview.jslib.meta": "Runtime/Plugins/WebGL/verve_webview.jslib.meta",
+        "distribution/Runtime/Web.meta": "Runtime/Web.meta",
+        "distribution/Runtime/Web/Core.meta": "Runtime/Web/Core.meta",
+        "distribution/Runtime/Web/Core/api-contract.js.meta": "Runtime/Web/Core/api-contract.js.meta",
+        "distribution/Runtime/Web/Core/verve_webview_core.js.meta": "Runtime/Web/Core/verve_webview_core.js.meta",
+        "distribution/Runtime/Web/Core/verve_webview_core_bg.wasm.meta": "Runtime/Web/Core/verve_webview_core_bg.wasm.meta",
+        "distribution/Runtime/Web/Core/verve_webview_core_facade.js.meta": "Runtime/Web/Core/verve_webview_core_facade.js.meta",
+        "distribution/Runtime/Web/Core/verve_webview_web_backend.js.meta": "Runtime/Web/Core/verve_webview_web_backend.js.meta",
+    },
+    architecture = "wasm32",
     platform = "web",
     visibility = ["//packages/webview-core:__pkg__"],
 )
@@ -54,10 +128,22 @@ engine_sdk_distribution(
     name = "sdk",
     engine = "unity",
     adapter = ":adapter",
-    android = ":binding_android",
-    ios = ":binding_ios",
-    windows = ":binding_windows",
-    web = ":binding_web",
+    android = select({
+        "//build:imported_fragments": "@release_fragments//:android",
+        "//conditions:default": ":binding_android",
+    }),
+    ios = select({
+        "//build:imported_fragments": "@release_fragments//:ios",
+        "//conditions:default": ":binding_ios",
+    }),
+    windows = select({
+        "//build:imported_fragments": "@release_fragments//:windows",
+        "//conditions:default": ":binding_windows",
+    }),
+    web = select({
+        "//build:imported_fragments": "@release_fragments//:web",
+        "//conditions:default": ":binding_web",
+    }),
     release_version = "//build:release_version",
     target_compatible_with = ["//build/platforms:canonical_aggregation_capability"],
     visibility = ["//visibility:public"],
@@ -68,6 +154,16 @@ sh_test(
     srcs = ["tests/adapter_contract_test.sh"],
     args = ["$(locations :adapter)"],
     data = [":adapter"],
+)
+
+py_test(
+    name = "sdk_distribution_test",
+    srcs = ["tests/sdk_distribution_test.py"],
+    args = ["$(locations :sdk)"],
+    data = [":sdk"],
+    main = "tests/sdk_distribution_test.py",
+    python_version = "PY3",
+    tags = ["manual"],
 )
 
 sh_test(

@@ -9,6 +9,7 @@ bazel_dep(name = "rules_cc", version = "0.2.22")
 bazel_dep(name = "rules_dotnet", version = "0.21.5")
 bazel_dep(name = "rules_java", version = "9.3.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.2.0")
+bazel_dep(name = "rules_python", version = "1.7.0")
 bazel_dep(name = "rules_rust", version = "0.71.3")
 bazel_dep(name = "rules_rust_wasm_bindgen", version = "0.71.0")
 # Direct because project-owned platform declarations reference @platforms.
@@ -34,6 +35,15 @@ android_sdk.configure(
 )
 use_repo(android_sdk, "androidsdk")
 register_toolchains("@androidsdk//:sdk-toolchain", "@androidsdk//:all")
+
+local_repository = use_repo_rule(
+    "@bazel_tools//tools/build_defs/repo:local.bzl",
+    "local_repository",
+)
+local_repository(
+    name = "release_fragments",
+    path = "release/fragments",
+)
 
 http_archive = use_repo_rule(
     "@bazel_tools//tools/build_defs/repo:http.bzl",

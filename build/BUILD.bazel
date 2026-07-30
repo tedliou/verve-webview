@@ -1,6 +1,8 @@
-load("//build:release_version.bzl", "release_version")
+load("//build:release_version.bzl", "release_version", "use_imported_fragments")
+load("@rules_python//python:defs.bzl", "py_binary")
 
 exports_files([
+    "distribution_tool.py",
     "module_rules.bzl",
     "providers.bzl",
 ])
@@ -9,4 +11,24 @@ release_version(
     name = "release_version",
     build_setting_default = "UNSET",
     visibility = ["//visibility:public"],
+)
+
+use_imported_fragments(
+    name = "use_imported_fragments",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "imported_fragments",
+    flag_values = {":use_imported_fragments": "true"},
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "distribution_tool",
+    srcs = ["distribution_tool.py"],
+    main = "distribution_tool.py",
+    python_version = "PY3",
+    visibility = ["//visibility:private"],
 )

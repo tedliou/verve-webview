@@ -1,6 +1,68 @@
 {
   "schema_version": 1,
   "sdk_version": "0.0.0-pre.0",
-  "supported": [],
-  "verified": []
+  "supported": [
+    {
+      "engine": "unity",
+      "engine_line": "2021.3",
+      "minimum_patch": "2021.3.45f2",
+      "maximum_patch": "2021.3.45f2",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "unity",
+      "engine_line": "2022.3",
+      "minimum_patch": "2022.3.76f1",
+      "maximum_patch": "2022.3.76f1",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "unity",
+      "engine_line": "6000.0",
+      "minimum_patch": "6000.0.80f1",
+      "maximum_patch": "6000.0.80f1",
+      "platforms": ["android", "ios", "windows", "web"]
+    },
+    {
+      "engine": "unity",
+      "engine_line": "6000.3",
+      "minimum_patch": "6000.3.20f1",
+      "maximum_patch": "6000.3.20f1",
+      "platforms": ["android", "ios", "windows", "web"]
+    }
+  ],
+  "verified": [
+    {
+      "engine": "unity",
+      "engine_version": "2021.3.45f2",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "2021.3.45f2"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "unity",
+      "engine_version": "2022.3.76f1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "2022.3.76f1"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "unity",
+      "engine_version": "6000.0.80f1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "6000.0.80f1"},
+      "runtime": {"mode": "package-import-build"}
+    },
+    {
+      "engine": "unity",
+      "engine_version": "6000.3.20f1",
+      "platform": "windows",
+      "architecture": "x86_64",
+      "toolchain": {"unity_editor": "6000.3.20f1"},
+      "runtime": {"mode": "package-import-build"}
+    }
+  ]
 }

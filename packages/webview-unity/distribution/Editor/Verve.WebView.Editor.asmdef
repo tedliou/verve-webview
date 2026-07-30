@@ -1,0 +1,7 @@
+{
+  "name": "Verve.WebView.Editor",
+  "rootNamespace": "Verve.WebView.Editor",
+  "references": ["Verve.WebView"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

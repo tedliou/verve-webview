@@ -1,0 +1,10 @@
+{
+  "name": "com.tedliou.verve-webview",
+  "version": "{RELEASE_VERSION}",
+  "displayName": "Verve WebView for Unity",
+  "description": "A source-based Unity WebView SDK with Android, iOS, Windows, and Web bindings.",
+  "unity": "2021.3",
+  "author": {
+    "name": "Ted Liou"
+  }
+}
